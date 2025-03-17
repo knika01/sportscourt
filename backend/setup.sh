@@ -5,7 +5,7 @@ echo "Starting setup..."
 # Check if Node.js is installed
 if ! command -v node &> /dev/null
 then
-    echo "❌ Node.js not found. Please install it from https://nodejs.org/"
+    echo "Node.js not found. Please install it from https://nodejs.org/"
     exit 1
 fi
 
