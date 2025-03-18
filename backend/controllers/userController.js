@@ -69,7 +69,7 @@ const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    res.send('Game deleted');
+    res.send('User deleted');
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');
