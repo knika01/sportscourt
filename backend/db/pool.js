@@ -1,4 +1,5 @@
-const { Pool } = require('pg');  // Import PostgreSQL library
+require('dotenv').config();  // Ensure this is at the top
+const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.PG_USER,
@@ -6,6 +7,9 @@ const pool = new Pool({
   database: process.env.PG_DB,
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
+  ssl: {
+    rejectUnauthorized: false, // This is necessary for Neon (or other cloud providers)
+  },
 });
 
-// Now you can use `pool` to interact with the databas
+module.exports = pool;

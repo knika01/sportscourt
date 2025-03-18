@@ -1,23 +1,25 @@
-const pool = require('../db');
+const pool = require('../db/pool');
 
 // Fetch all games
 const fetchAllGames = async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM games');
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
-};
+    try {
+      console.log('Fetching games...');  // Debugging
+      const result = await pool.query('SELECT * FROM games');
+      console.log('Games fetched:', result.rows);  // Debugging
+      res.json(result.rows);
+    } catch (err) {
+      console.error('Database error:', err); // Log full error
+      res.status(500).json({ error: 'Server Error', details: err.message });
+    }
+  };
 
 // Create a new game
 const createGame = async (req, res) => {
-  const { name, genre, release_date } = req.body;
+  const { title, location, date_time, skill_level, max_players, created_by } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO games (name, genre, release_date) VALUES ($1, $2, $3) RETURNING *',
-      [name, genre, release_date]
+      'INSERT INTO games (title, location, date_time, skill_level, max_players, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [title, location, date_time, skill_level, max_players, created_by]
     );
     res.json(result.rows[0]);
   } catch (err) {

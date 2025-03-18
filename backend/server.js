@@ -1,7 +1,10 @@
-// Import required libraries
 const express = require('express');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
+const cors = require('cors');
+
+// Import game routes
+const gameRoutes = require('./routes/gameRoutes');  // Ensure this is correct
 
 // Initialize the app and load environment variables
 dotenv.config();
@@ -21,15 +24,15 @@ const pool = new Pool({
 
 // Middleware to parse JSON bodies
 app.use(express.json());
+app.use(cors());  // Enable CORS if you need to interact with frontend on different domains
 
-// Example route to test database connection
+// Test route to verify database connection
 app.get('/', async (req, res) => {
   try {
-    // Test if the connection to the database is successful
     const result = await pool.query('SELECT NOW()');
     res.status(200).json({
       message: 'Connected to the database!',
-      time: result.rows[0].now,  // This will show the current time from PostgreSQL
+      time: result.rows[0].now,  // Display the current time from PostgreSQL
     });
   } catch (err) {
     console.error(err);
@@ -37,10 +40,10 @@ app.get('/', async (req, res) => {
   }
 });
 
-// Example API route to fetch games (you can replace with your actual routes)
+// User routes (you can modify as needed)
 app.get('/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users');  // Adjust table name if needed
+    const result = await pool.query('SELECT * FROM users');  // Fetch all users from the database
     res.status(200).json(result.rows);
   } catch (err) {
     console.error(err);
@@ -48,8 +51,9 @@ app.get('/users', async (req, res) => {
   }
 });
 
-// Set up the server to listen on a specified port
-const PORT = process.env.PORT || 5000;  // Default to port 5000 if not specified in .env
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Register game routes
+app.use('/games', gameRoutes);
+
+// Start the server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
