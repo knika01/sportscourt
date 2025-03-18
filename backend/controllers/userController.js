@@ -38,7 +38,7 @@ const groupAllPlayers = async (req, res) => {
         console.log('Fetching players...');
         const result = pool.query(
             "SELECT game_id, GROUP_CONCAT(user_id ORDER BY user_id) AS users",
-            "FROM your_table",
+            "FROM game_participants",
             "GROUP BY game_id",
         ); // query to group users by game_id
         console.log('Users fetched:', result.rows);
