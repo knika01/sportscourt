@@ -5,6 +5,7 @@ const cors = require('cors');
 
 // Import game routes
 const gameRoutes = require('./routes/gameRoutes');  // Ensure this is correct
+const { fetchAllUsers, fetchAllPlayers } = require('./controllers/userController');
 
 // Initialize the app and load environment variables
 dotenv.config();
@@ -40,19 +41,23 @@ app.get('/', async (req, res) => {
   }
 });
 
-// User routes (you can modify as needed)
-app.get('/users', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM users');  // Fetch all users from the database
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
+// // User routes (you can modify as needed)
+// app.get('/users', async (req, res) => {
+//   try {
+//     const result = await pool.query('SELECT * FROM users');  // Fetch all users from the database
+//     res.status(200).json(result.rows);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Failed to fetch users' });
+//   }
+// });
 
 // Register game routes
 app.use('/games', gameRoutes);
+
+// Register user routes
+app.use('/users', fetchAllUsers);
+
 
 // Start the server
 const PORT = process.env.PORT || 5000;
