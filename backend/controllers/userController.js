@@ -51,16 +51,32 @@ const groupAllPlayers = async (req, res) => {
 
 // Create a new user
 const createUser = async (req, res) => {
-  const { username, email, password_hash, created_at } = req.body;
   try {
+    const { username, email, password_hash } = req.body;
+
+    // Basic validation
+    if (!username || !email || !password_hash) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Username, email, and password_hash are required'
+      });
+    }
+
     const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash, created_at) VALUES ($1, $2, $3, $4) RETURNING *',
-      [username, email, password_hash, created_at]
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING *',
+      [username, email, password_hash]
     );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+
+    res.status(201).json({
+      status: 'success',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to create user'
+    });
   }
 };
 

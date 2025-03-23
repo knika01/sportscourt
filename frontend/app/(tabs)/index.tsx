@@ -1,8 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { gameService } from '@/services/gameService';
+import { Game } from '@/types/game';
+import { gameParticipantService } from '@/services/gameParticipantService';
 
 // Colors from Figma
 const COLORS = {
@@ -16,6 +19,43 @@ const COLORS = {
 };
 
 export default function HomeScreen() {
+  const [myGames, setMyGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const userId = 1; // TODO: Get from auth context
+
+  useEffect(() => {
+    fetchMyGames();
+  }, []);
+
+  const fetchMyGames = async () => {
+    try {
+      setIsLoading(true);
+      const response = await gameService.getUserGames(userId);
+      if (response.status === 'success') {
+        setMyGames(response.data as Game[]);
+      }
+    } catch (error) {
+      console.error('Error fetching user games:', error);
+      Alert.alert('Error', 'Failed to load your games');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLeaveGame = async (gameId: number) => {
+    try {
+      await gameParticipantService.leaveGame(gameId, userId);
+      Alert.alert(
+        "Game Left",
+        "You have successfully left the game.",
+        [{ text: "OK", onPress: fetchMyGames }]
+      );
+    } catch (error) {
+      console.error('Error leaving game:', error);
+      Alert.alert('Error', 'Failed to leave the game');
+    }
+  };
+
   const handleJoinGame = () => {
     Alert.alert(
       "Game Joined!",
@@ -24,6 +64,26 @@ export default function HomeScreen() {
         { text: "OK", onPress: () => router.push('/') }
       ]
     );
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -43,35 +103,56 @@ export default function HomeScreen() {
         {/* My Games Section */}
         <Text style={styles.sectionTitle}>My Games</Text>
         
-        {/* Game Card 1 - Personal Game */}
-        <View style={styles.gameCard}>
-          <View style={styles.gameHeader}>
-            <View>
-              <Text style={styles.gameTitle}>Basketball at Central Park</Text>
-              <View style={styles.availableSlots}>
-                <Text style={styles.slotsText}>You're in!</Text>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        ) : myGames.length === 0 ? (
+          <Text style={styles.noGamesText}>You haven't joined any games yet</Text>
+        ) : (
+          myGames.map((game) => (
+            <View key={game.id} style={styles.gameCard}>
+              <View style={styles.gameHeader}>
+                <View>
+                  <Text style={styles.gameTitle}>{game.title}</Text>
+                  <View style={styles.availableSlots}>
+                    <Text style={styles.slotsText}>You're in!</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.gameDetails}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>{game.location}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>
+                    {formatDate(game.date_time)}, {formatTime(game.date_time)}
+                  </Text>
+                </View>
+                {game.description && (
+                  <View style={styles.detailRow}>
+                    <Ionicons name="information-circle-outline" size={16} color={COLORS.gray} />
+                    <Text style={styles.detailText}>{game.description}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.gameActions}>
+                <TouchableOpacity 
+                  style={styles.leaveButton}
+                  onPress={() => handleLeaveGame(game.id)}
+                >
+                  <Text style={styles.leaveButtonText}>Leave Game</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.detailsButton}
+                  onPress={() => router.push(`/game-details?id=${game.id}`)}
+                >
+                  <Text style={styles.detailsButtonText}>View Details</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-          <View style={styles.gameDetails}>
-            <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={16} color={COLORS.gray} />
-              <Text style={styles.detailText}>Central Park Basketball Court</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="time-outline" size={16} color={COLORS.gray} />
-              <Text style={styles.detailText}>Today, 3:00 PM - 5:00 PM</Text>
-            </View>
-          </View>
-          <View style={styles.gameActions}>
-            <TouchableOpacity 
-              style={styles.detailsButton}
-              onPress={() => router.push('/game-details')}
-            >
-              <Text style={styles.detailsButtonText}>View Details</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          ))
+        )}
 
         {/* Recommended Games Section */}
         <Text style={styles.sectionTitle}>Recommended for You</Text>
@@ -250,21 +331,40 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 24,
+    padding: 16,
+    borderRadius: 30,
     shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 3.84,
     elevation: 5,
   },
   createGameText: {
     color: COLORS.white,
     marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  noGamesText: {
+    textAlign: 'center',
+    color: COLORS.gray,
+    fontSize: 16,
+    marginTop: 20,
+  },
+  leaveButton: {
+    backgroundColor: '#f44336',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  leaveButtonText: {
+    color: COLORS.white,
+    textAlign: 'center',
     fontWeight: '500',
   },
 });

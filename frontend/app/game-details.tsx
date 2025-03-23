@@ -1,9 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import MapView from 'react-native-maps';
+import { GameParticipationButton } from '../components/GameParticipationButton';
+import { gameService } from '@/services/gameService';
+import { Game } from '@/types/game';
 
 // Colors from Figma
 const COLORS = {
@@ -17,15 +20,59 @@ const COLORS = {
 };
 
 export default function GameDetailsScreen() {
-  const handleJoinGame = () => {
-    Alert.alert(
-      "Game Joined!",
-      "You have successfully joined the game. You will be notified when the game starts.",
-      [
-        { text: "OK", onPress: () => router.push('/') }
-      ]
-    );
+  const { id } = useLocalSearchParams();
+  const gameId = Number(id);
+  // TODO: Get actual user ID from auth context
+  const userId = 1; // Temporary hardcoded user ID
+  const [game, setGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchGameDetails();
+  }, [gameId]);
+
+  const fetchGameDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await gameService.getGameById(gameId);
+      if (response.status === 'success') {
+        console.log('Game data received:', response.data);
+        setGame(response.data as Game);
+      } else {
+        setError('Failed to load game details');
+      }
+    } catch (err) {
+      setError('Failed to load game details');
+      console.error('Error fetching game details:', err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleParticipantChange = () => {
+    fetchGameDetails(); // Refresh game details when participation changes
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !game) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'Game not found'}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -41,12 +88,21 @@ export default function GameDetailsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Sport */}
+        {/* Title */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sport</Text>
+          <Text style={styles.sectionTitle}>Title</Text>
           <View style={styles.dropdown}>
-            <Text style={styles.dropdownText}>Basketball</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.black} />
+            <Text style={styles.dropdownText}>{game.title}</Text>
+          </View>
+        </View>
+
+        {/* Description */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Description</Text>
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionText}>
+              {game.description !== null ? game.description : 'No description provided'}
+            </Text>
           </View>
         </View>
 
@@ -55,11 +111,9 @@ export default function GameDetailsScreen() {
           <Text style={styles.sectionTitle}>Time</Text>
           <View style={styles.timeContainer}>
             <View style={styles.timeInput}>
-              <Text style={styles.timeText}>03/02/25, 3:00 PM</Text>
-            </View>
-            <Text style={styles.timeSeparator}>-</Text>
-            <View style={styles.timeInput}>
-              <Text style={styles.timeText}>03/02/25, 5:00 PM</Text>
+              <Text style={styles.timeText}>
+                {new Date(game.date_time).toLocaleString()}
+              </Text>
             </View>
           </View>
         </View>
@@ -68,7 +122,7 @@ export default function GameDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
           <View style={styles.locationInput}>
-            <Text style={styles.locationText}>IM Courts 3</Text>
+            <Text style={styles.locationText}>{game.location}</Text>
           </View>
           <View style={styles.mapContainer}>
             <MapView
@@ -87,18 +141,19 @@ export default function GameDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skill Level</Text>
           <View style={styles.dropdown}>
-            <Text style={styles.dropdownText}>Intermediate</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.black} />
+            <Text style={styles.dropdownText}>{game.skill_level}</Text>
           </View>
         </View>
 
         {/* Player Count */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Player Count</Text>
-          <View style={styles.dropdown}>
-            <Text style={styles.dropdownText}>4/6 players</Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.black} />
-          </View>
+          <GameParticipationButton
+            gameId={gameId}
+            userId={userId}
+            maxPlayers={game.max_players}
+            onParticipantChange={handleParticipantChange}
+          />
         </View>
       </ScrollView>
 
@@ -114,13 +169,6 @@ export default function GameDetailsScreen() {
             <Ionicons name="logo-google" size={20} color={COLORS.white} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          style={styles.joinButton}
-          onPress={handleJoinGame}
-        >
-          <Text style={styles.joinButtonText}>Join Game</Text>
-          <Ionicons name="calendar" size={20} color={COLORS.white} />
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -130,6 +178,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.gray,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',
@@ -170,6 +232,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.black,
   },
+  descriptionContainer: {
+    backgroundColor: COLORS.lightGray,
+    padding: 12,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+  },
+  descriptionText: {
+    fontSize: 16,
+    color: COLORS.black,
+    lineHeight: 24,
+  },
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -186,10 +260,6 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 16,
     color: COLORS.black,
-  },
-  timeSeparator: {
-    fontSize: 20,
-    color: COLORS.white,
   },
   locationInput: {
     backgroundColor: COLORS.lightGray,
@@ -222,20 +292,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  joinButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '500',
-  },
   messageButton: {
     flex: 1,
     flexDirection: 'row',
@@ -256,7 +312,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4285F4', // Google Blue
+    backgroundColor: COLORS.secondary,
     padding: 12,
     borderRadius: 8,
     gap: 8,

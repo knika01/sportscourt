@@ -1,4 +1,15 @@
 {
+  "name": "sportscourt",
+  "version": "1.0.0",
+  "description": "SportsCourt - Find and join sports games",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm start\"",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
   "dependencies": {
     "@expo/webpack-config": "^19.0.1",
     "react-dom": "^18.2.0",

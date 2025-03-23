@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { gameService } from '@/services/gameService';
+import { Game } from '@/types/game';
 
 const COLORS = {
   primary: '#4CA354',
@@ -14,83 +16,70 @@ const COLORS = {
   background: '#8BC485',
 };
 
-const SPORTS = ['All', 'Basketball', 'Tennis', 'Soccer', 'Volleyball'];
-const BUILDINGS = ['All', 'Central Park', 'City Tennis Club', 'Sports Complex', 'Community Center'];
-
-// Sample data - in a real app, this would come from your backend
-const SAMPLE_GAMES = [
-  {
-    id: 1,
-    title: 'Basketball at Central Park',
-    sport: 'Basketball',
-    building: 'Central Park',
-    location: 'Central Park Basketball Court',
-    time: 'Today, 3:00 PM - 5:00 PM',
-    slots: 2,
-  },
-  {
-    id: 2,
-    title: 'Tennis Match',
-    sport: 'Tennis',
-    building: 'City Tennis Club',
-    location: 'City Tennis Club',
-    time: 'Tomorrow, 10:00 AM - 12:00 PM',
-    slots: 1,
-  },
-  {
-    id: 3,
-    title: 'Soccer Game',
-    sport: 'Soccer',
-    building: 'Sports Complex',
-    location: 'Sports Complex Field',
-    time: 'Tomorrow, 2:00 PM - 4:00 PM',
-    slots: 3,
-  },
-  {
-    id: 4,
-    title: 'Volleyball Tournament',
-    sport: 'Volleyball',
-    building: 'Community Center',
-    location: 'Community Center Court',
-    time: 'Saturday, 1:00 PM - 3:00 PM',
-    slots: 4,
-  },
-];
+const SPORTS = ['All', 'Basketball', 'Tennis', 'Soccer', 'Volleyball', 'Badminton', 'Pickleball', 'Football'];
+const SKILL_LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSport, setSelectedSport] = useState('All');
-  const [selectedBuilding, setSelectedBuilding] = useState('All');
-  const [selectedDistance, setSelectedDistance] = useState('5mi');
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState('All');
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleJoinGame = () => {
-    Alert.alert(
-      "Game Joined!",
-      "You have successfully joined the game. You will be notified when the game starts.",
-      [
-        { text: "OK", onPress: () => router.push('/') }
-      ]
-    );
+  useEffect(() => {
+    fetchGames();
+  }, []);
+
+  const fetchGames = async () => {
+    try {
+      setLoading(true);
+      const response = await gameService.fetchAllGames();
+      if (response.status === 'success') {
+        setGames(response.data as Game[]);
+      } else {
+        setError('Failed to fetch games');
+      }
+    } catch (error) {
+      console.error('Error fetching games:', error);
+      setError('Failed to fetch games');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearFilters = () => {
     setSelectedSport('All');
-    setSelectedBuilding('All');
-    setSelectedDistance('5mi');
+    setSelectedSkillLevel('All');
     setSearchQuery('');
   };
 
   // Filter games based on selected filters and search query
-  const filteredGames = SAMPLE_GAMES.filter(game => {
-    const matchesSport = selectedSport === 'All' || game.sport === selectedSport;
-    const matchesBuilding = selectedBuilding === 'All' || game.building === selectedBuilding;
+  const filteredGames = games.filter(game => {
+    const matchesSport = selectedSport === 'All' || game.title === selectedSport;
+    const matchesSkillLevel = selectedSkillLevel === 'All' || game.skill_level === selectedSkillLevel;
     const matchesSearch = searchQuery === '' || 
       game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.sport.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.building.toLowerCase().includes(searchQuery.toLowerCase());
+      game.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesSport && matchesBuilding && matchesSearch;
+    return matchesSport && matchesSkillLevel && matchesSearch;
   });
+
+  const formatDateTime = (dateTime: string) => {
+    const date = new Date(dateTime);
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === now.toDateString()) {
+      return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return `Tomorrow, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleString();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -133,48 +122,24 @@ export default function SearchScreen() {
             </ScrollView>
           </View>
 
-          {/* Building Filter */}
+          {/* Skill Level Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Building</Text>
+            <Text style={styles.filterLabel}>Skill Level</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {BUILDINGS.map((building) => (
+              {SKILL_LEVELS.map((level) => (
                 <TouchableOpacity
-                  key={building}
+                  key={level}
                   style={[
                     styles.filterChip,
-                    selectedBuilding === building && styles.filterChipSelected
+                    selectedSkillLevel === level && styles.filterChipSelected
                   ]}
-                  onPress={() => setSelectedBuilding(building)}
+                  onPress={() => setSelectedSkillLevel(level)}
                 >
                   <Text style={[
                     styles.filterChipText,
-                    selectedBuilding === building && styles.filterChipTextSelected
+                    selectedSkillLevel === level && styles.filterChipTextSelected
                   ]}>
-                    {building}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Distance Filter */}
-          <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Distance</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {['1mi', '5mi', '10mi', '25mi'].map((distance) => (
-                <TouchableOpacity
-                  key={distance}
-                  style={[
-                    styles.filterChip,
-                    selectedDistance === distance && styles.filterChipSelected
-                  ]}
-                  onPress={() => setSelectedDistance(distance)}
-                >
-                  <Text style={[
-                    styles.filterChipText,
-                    selectedDistance === distance && styles.filterChipTextSelected
-                  ]}>
-                    {distance}
+                    {level}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -193,21 +158,38 @@ export default function SearchScreen() {
 
         {/* Search Results */}
         <View style={styles.resultsContainer}>
-          {filteredGames.length === 0 ? (
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : filteredGames.length === 0 ? (
             <View style={styles.noResultsContainer}>
               <Text style={styles.noResultsText}>No games found matching your filters</Text>
             </View>
           ) : (
             filteredGames.map((game) => (
-              <View key={game.id} style={styles.gameCard}>
+              <TouchableOpacity 
+                key={game.id} 
+                style={styles.gameCard}
+                onPress={() => router.push(`/game-details?id=${game.id}`)}
+              >
                 <View style={styles.gameHeader}>
                   <View>
                     <Text style={styles.gameTitle}>{game.title}</Text>
                     <View style={styles.availableSlots}>
-                      <Text style={styles.slotsText}>{game.slots} slot{game.slots !== 1 ? 's' : ''} available</Text>
+                      <Text style={styles.slotsText}>Skill Level: {game.skill_level}</Text>
                     </View>
                   </View>
                 </View>
+                {game.description && (
+                  <Text style={styles.gameDescription} numberOfLines={2}>
+                    {game.description}
+                  </Text>
+                )}
                 <View style={styles.gameDetails}>
                   <View style={styles.detailRow}>
                     <Ionicons name="location-outline" size={16} color={COLORS.gray} />
@@ -215,24 +197,14 @@ export default function SearchScreen() {
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="time-outline" size={16} color={COLORS.gray} />
-                    <Text style={styles.detailText}>{game.time}</Text>
+                    <Text style={styles.detailText}>{formatDateTime(game.date_time)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Ionicons name="people-outline" size={16} color={COLORS.gray} />
+                    <Text style={styles.detailText}>Max Players: {game.max_players}</Text>
                   </View>
                 </View>
-                <View style={styles.gameActions}>
-                  <TouchableOpacity 
-                    style={styles.joinButton}
-                    onPress={handleJoinGame}
-                  >
-                    <Text style={styles.joinButtonText}>Join Game</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.detailsButton}
-                    onPress={() => router.push('/game-details')}
-                  >
-                    <Text style={styles.detailsButtonText}>View Details</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -249,17 +221,17 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-    margin: 16,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    height: 44,
+    padding: 16,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lightGray,
   },
   searchIcon: {
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
+    height: 40,
     fontSize: 16,
     color: COLORS.black,
   },
@@ -267,31 +239,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filtersContainer: {
-    paddingHorizontal: 16,
+    padding: 16,
+    backgroundColor: COLORS.white,
   },
   filterSection: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   filterLabel: {
-    fontSize: 11,
-    color: COLORS.gray,
-    marginBottom: 2,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: COLORS.black,
   },
   filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: COLORS.lightGray,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 4,
-    height: 24,
-    justifyContent: 'center',
+    marginRight: 8,
   },
   filterChipSelected: {
     backgroundColor: COLORS.primary,
   },
   filterChipText: {
-    color: COLORS.gray,
-    fontSize: 11,
+    color: COLORS.black,
   },
   filterChipTextSelected: {
     color: COLORS.white,
@@ -299,26 +270,40 @@ const styles = StyleSheet.create({
   clearFiltersButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.lightGray,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 4,
-    height: 24,
+    alignSelf: 'flex-end',
   },
   clearFiltersText: {
     color: COLORS.gray,
-    fontSize: 11,
-    marginLeft: 2,
+    marginLeft: 4,
   },
   resultsContainer: {
-    paddingHorizontal: 16,
+    padding: 16,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: COLORS.gray,
+    fontSize: 16,
+  },
+  noResultsContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    color: COLORS.gray,
+    fontSize: 16,
   },
   gameCard: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: COLORS.black,
     shadowOffset: {
       width: 0,
@@ -329,78 +314,35 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   gameHeader: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   gameTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.black,
-    marginBottom: 8,
   },
   availableSlots: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   slotsText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '500',
+    color: COLORS.gray,
+    fontSize: 14,
+  },
+  gameDescription: {
+    color: COLORS.gray,
+    fontSize: 14,
+    marginBottom: 8,
   },
   gameDetails: {
-    marginBottom: 16,
+    gap: 8,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
   detailText: {
     marginLeft: 8,
     color: COLORS.gray,
     fontSize: 14,
-  },
-  gameActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  joinButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 8,
-  },
-  joinButtonText: {
-    color: COLORS.white,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  detailsButton: {
-    backgroundColor: COLORS.secondary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 8,
-  },
-  detailsButtonText: {
-    color: COLORS.white,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  noResultsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  noResultsText: {
-    fontSize: 16,
-    color: COLORS.gray,
-    textAlign: 'center',
   },
 }); 

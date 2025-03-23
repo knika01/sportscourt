@@ -1,30 +1,132 @@
 const pool = require('../db/pool');
 
-// Fetch all games
+// Helper function for consistent error responses
+const handleError = (res, error, status = 500) => {
+  console.error('Error:', error);
+  res.status(status).json({
+    status: 'error',
+    message: error.message || 'Internal Server Error'
+  });
+};
+
+// Helper function for successful responses
+const handleSuccess = (res, data, status = 200) => {
+  res.status(status).json({
+    status: 'success',
+    data
+  });
+};
+
+// Fetch all games with optional filters
 const fetchAllGames = async (req, res) => {
-    try {
-      console.log('Fetching games...');  // Debugging
-      const result = await pool.query('SELECT * FROM games');
-      console.log('Games fetched:', result.rows);  // Debugging
-      res.json(result.rows);
-    } catch (err) {
-      console.error('Database error:', err); // Log full error
-      res.status(500).json({ error: 'Server Error', details: err.message });
+  try {
+    const { location, skill_level, date } = req.query;
+    let query = 'SELECT * FROM games';
+    const params = [];
+    let paramCount = 1;
+
+    if (location || skill_level || date) {
+      query += ' WHERE';
+      if (location) {
+        query += ` location ILIKE $${paramCount}`;
+        params.push(`%${location}%`);
+        paramCount++;
+      }
+      if (skill_level) {
+        query += location ? ' AND' : '';
+        query += ` skill_level = $${paramCount}`;
+        params.push(skill_level);
+        paramCount++;
+      }
+      if (date) {
+        query += (location || skill_level) ? ' AND' : '';
+        query += ` DATE(date_time) = $${paramCount}`;
+        params.push(date);
+      }
     }
-  };
+
+    query += ' ORDER BY date_time ASC';
+    const result = await pool.query(query, params);
+    handleSuccess(res, result.rows);
+  } catch (err) {
+    handleError(res, err);
+  }
+};
 
 // Create a new game
 const createGame = async (req, res) => {
-  const { title, location, date_time, skill_level, max_players, created_by } = req.body;
+  const { title, location, date_time, skill_level, max_players, created_by, description } = req.body;
+
+  // Input validation
+  if (!title || !location || !date_time || !skill_level || !max_players || !created_by) {
+    return handleError(res, new Error('Missing required fields'), 400);
+  }
+
+  // Validate date format
+  const gameDate = new Date(date_time);
+  if (isNaN(gameDate.getTime())) {
+    return handleError(res, new Error('Invalid date format'), 400);
+  }
+
+  // Validate max_players
+  if (max_players < 2) {
+    return handleError(res, new Error('Maximum players must be at least 2'), 400);
+  }
+
   try {
     const result = await pool.query(
-      'INSERT INTO games (title, location, date_time, skill_level, max_players, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [title, location, date_time, skill_level, max_players, created_by]
+      `INSERT INTO games (title, location, date_time, skill_level, max_players, created_by, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [title, location, gameDate, skill_level, max_players, created_by, description]
     );
-    res.json(result.rows[0]);
+    handleSuccess(res, result.rows[0], 201);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    handleError(res, err);
+  }
+};
+
+// Get a single game by ID
+const getGameById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM games WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return handleError(res, new Error('Game not found'), 404);
+    }
+    handleSuccess(res, result.rows[0]);
+  } catch (err) {
+    handleError(res, err);
+  }
+};
+
+// Update a game
+const updateGame = async (req, res) => {
+  const { id } = req.params;
+  const { title, location, date_time, skill_level, max_players, description } = req.body;
+
+  try {
+    // Check if game exists
+    const gameExists = await pool.query('SELECT * FROM games WHERE id = $1', [id]);
+    if (gameExists.rows.length === 0) {
+      return handleError(res, new Error('Game not found'), 404);
+    }
+
+    const result = await pool.query(
+      `UPDATE games 
+       SET title = COALESCE($1, title),
+           location = COALESCE($2, location),
+           date_time = COALESCE($3, date_time),
+           skill_level = COALESCE($4, skill_level),
+           max_players = COALESCE($5, max_players),
+           description = COALESCE($6, description)
+       WHERE id = $7
+       RETURNING *`,
+      [title, location, date_time, skill_level, max_players, description, id]
+    );
+    handleSuccess(res, result.rows[0]);
+  } catch (err) {
+    handleError(res, err);
   }
 };
 
@@ -32,16 +134,47 @@ const createGame = async (req, res) => {
 const deleteGame = async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query('DELETE FROM games WHERE id = $1', [id]);
-    res.send('Game deleted');
+    const result = await pool.query('DELETE FROM games WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return handleError(res, new Error('Game not found'), 404);
+    }
+    handleSuccess(res, { message: 'Game deleted successfully' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    handleError(res, err);
+  }
+};
+
+// Get games for a specific user
+const getUserGames = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const query = `
+      SELECT g.* 
+      FROM games g
+      JOIN game_participants gp ON g.id = gp.game_id
+      WHERE gp.user_id = $1
+      ORDER BY g.date_time DESC
+    `;
+    const result = await pool.query(query, [userId]);
+    
+    res.json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching user games:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch user games'
+    });
   }
 };
 
 module.exports = {
   fetchAllGames,
   createGame,
+  getGameById,
+  updateGame,
   deleteGame,
+  getUserGames
 };

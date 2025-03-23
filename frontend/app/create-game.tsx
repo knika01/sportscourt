@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { gameService } from '../services/gameService';
 
 // Colors from Figma
 const COLORS = {
@@ -23,6 +24,7 @@ const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
 
 export default function CreateGameScreen() {
   // Form state
+  const [title, setTitle] = useState('');
   const [sport, setSport] = useState('');
   const [date, setDate] = useState(new Date());
   const [startTime, setStartTime] = useState(new Date());
@@ -40,19 +42,51 @@ export default function CreateGameScreen() {
   const [showSkillLevelModal, setShowSkillLevelModal] = useState(false);
   const [showPlayerCountModal, setShowPlayerCountModal] = useState(false);
 
-  const handlePost = () => {
-    // TODO: Implement game creation logic
-    console.log('Creating game:', {
-      sport,
-      date,
-      startTime,
-      endTime,
-      location,
-      description,
-      skillLevel,
-      playerCount,
-    });
-    router.back();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePost = async () => {
+    if (!title || !sport || !location || !skillLevel || !playerCount) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Combine date and time into a single datetime string
+      const dateTime = new Date(date);
+      dateTime.setHours(startTime.getHours());
+      dateTime.setMinutes(startTime.getMinutes());
+
+      const gameData = {
+        title,
+        sport,
+        location,
+        date_time: dateTime.toISOString(),
+        description: description.trim() || null,
+        skill_level: skillLevel,
+        max_players: parseInt(playerCount),
+        created_by: 1 // TODO: Get from auth context
+      };
+
+      console.log('Creating game with data:', gameData);
+      const response = await gameService.createGame(gameData);
+      
+      if (response.status === 'success') {
+        Alert.alert(
+          'Success',
+          'Game created successfully!',
+          [{ text: 'OK', onPress: () => router.push('/') }]
+        );
+      } else {
+        throw new Error(response.message || 'Failed to create game');
+      }
+    } catch (error) {
+      console.error('Error creating game:', error);
+      Alert.alert('Error', 'Failed to create game. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -74,6 +108,18 @@ export default function CreateGameScreen() {
       {/* Form */}
       <ScrollView style={styles.content}>
         <View style={styles.formContainer}>
+          {/* Title */}
+          <View style={styles.input}>
+            <Text style={styles.inputLabel}>Title</Text>
+            <TextInput
+              style={styles.textInput}
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Enter game title"
+              placeholderTextColor={COLORS.gray}
+            />
+          </View>
+
           {/* Sport Selection */}
           <TouchableOpacity 
             style={styles.input}
@@ -165,10 +211,15 @@ export default function CreateGameScreen() {
 
       {/* Post Button */}
       <TouchableOpacity 
-        style={styles.postButton}
+        style={[styles.postButton, isLoading && styles.postButtonDisabled]}
         onPress={handlePost}
+        disabled={isLoading}
       >
-        <Text style={styles.postButtonText}>Post</Text>
+        {isLoading ? (
+          <ActivityIndicator color={COLORS.white} />
+        ) : (
+          <Text style={styles.postButtonText}>Post</Text>
+        )}
       </TouchableOpacity>
 
       {/* Modals */}
@@ -389,5 +440,8 @@ const styles = StyleSheet.create({
   modalItemText: {
     fontSize: 16,
     color: COLORS.black,
+  },
+  postButtonDisabled: {
+    opacity: 0.7,
   },
 }); 

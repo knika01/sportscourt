@@ -2,10 +2,13 @@ const express = require('express');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
 const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
 
-// Import game routes
-const gameRoutes = require('./routes/gameRoutes');  // Ensure this is correct
-const { fetchAllUsers, fetchAllPlayers } = require('./controllers/userController');
+// Import routes
+const gameRoutes = require('./routes/gameRoutes');
+const userRoutes = require('./routes/userRoutes');
+const gameParticipantRoutes = require('./routes/gameParticipantRoutes');
 
 // Initialize the app and load environment variables
 dotenv.config();
@@ -19,46 +22,74 @@ const pool = new Pool({
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
   ssl: {
-    rejectUnauthorized: false, // This is necessary for Neon (or other cloud providers)
+    rejectUnauthorized: false,
   },
 });
 
-// Middleware to parse JSON bodies
+// Middleware
+app.use(helmet()); // Security headers
+app.use(morgan('dev')); // Request logging
 app.use(express.json());
-app.use(cors());  // Enable CORS if you need to interact with frontend on different domains
+app.use(express.urlencoded({ extended: true }));
 
-// Test route to verify database connection
-app.get('/', async (req, res) => {
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+app.use(cors(corsOptions));
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Database connection test route
+app.get('/db-test', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
     res.status(200).json({
-      message: 'Connected to the database!',
-      time: result.rows[0].now,  // Display the current time from PostgreSQL
+      status: 'ok',
+      message: 'Database connection successful',
+      timestamp: result.rows[0].now
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to connect to database' });
+    console.error('Database connection error:', err);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: err.message
+    });
   }
 });
 
-// // User routes (you can modify as needed)
-// app.get('/users', async (req, res) => {
-//   try {
-//     const result = await pool.query('SELECT * FROM users');  // Fetch all users from the database
-//     res.status(200).json(result.rows);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: 'Failed to fetch users' });
-//   }
-// });
+// Register routes
+app.use('/api/games', gameRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/participants', gameParticipantRoutes);
 
-// Register game routes
-app.use('/games', gameRoutes);
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    status: 'error',
+    message: 'Route not found'
+  });
+});
 
-// Register user routes
-app.use('/users', fetchAllUsers);
-
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    status: 'error',
+    message: err.message || 'Internal Server Error'
+  });
+});
 
 // Start the server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
