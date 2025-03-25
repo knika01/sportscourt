@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import MapView from 'react-native-maps';
 import { GameParticipationButton } from '../components/GameParticipationButton';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
+import { gameParticipantService } from '@/services/gameParticipantService';
+import { GameParticipant } from '@/types/gameParticipant';
 
 // Colors from Figma
 const COLORS = {
@@ -20,17 +22,15 @@ const COLORS = {
 };
 
 export default function GameDetailsScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, isHost } = useLocalSearchParams();
   const gameId = Number(id);
+  const isHostView = isHost === 'true';
   // TODO: Get actual user ID from auth context
   const userId = 1; // Temporary hardcoded user ID
   const [game, setGame] = useState<Game | null>(null);
+  const [participants, setParticipants] = useState<GameParticipant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchGameDetails();
-  }, [gameId]);
 
   const fetchGameDetails = async () => {
     try {
@@ -50,8 +50,51 @@ export default function GameDetailsScreen() {
     }
   };
 
+  const fetchParticipants = async () => {
+    try {
+      const response = await gameParticipantService.getGameParticipants(gameId);
+      if (response.status === 'success') {
+        setParticipants(response.data as GameParticipant[]);
+      }
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchGameDetails();
+    if (isHostView) {
+      fetchParticipants();
+    }
+  }, [gameId]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchGameDetails();
+      if (isHostView) {
+        fetchParticipants();
+      }
+    }, [gameId, isHostView])
+  );
+
   const handleParticipantChange = () => {
     fetchGameDetails(); // Refresh game details when participation changes
+  };
+
+  const handleDeleteGame = async () => {
+    try {
+      await gameService.deleteGame(gameId);
+      Alert.alert(
+        "Game Deleted",
+        "You have successfully deleted the game.",
+        [{ text: "OK", onPress: () => router.replace('/') }]
+      );
+    } catch (error) {
+      console.error('Error deleting game:', error);
+      Alert.alert('Error', 'Failed to delete the game');
+    }
   };
 
   if (loading) {
@@ -93,6 +136,14 @@ export default function GameDetailsScreen() {
           <Text style={styles.sectionTitle}>Title</Text>
           <View style={styles.dropdown}>
             <Text style={styles.dropdownText}>{game.title}</Text>
+          </View>
+        </View>
+
+        {/* Sport */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sport</Text>
+          <View style={styles.dropdown}>
+            <Text style={styles.dropdownText}>{game.sport}</Text>
           </View>
         </View>
 
@@ -155,19 +206,59 @@ export default function GameDetailsScreen() {
             onParticipantChange={handleParticipantChange}
           />
         </View>
+
+        {/* Participants Section (Host View Only) */}
+        {isHostView && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Participants</Text>
+            <View style={styles.participantsContainer}>
+              {participants.length === 0 ? (
+                <Text style={styles.noParticipantsText}>No participants yet</Text>
+              ) : (
+                participants.map((participant) => (
+                  <View key={participant.id} style={styles.participantRow}>
+                    <Ionicons name="person-circle-outline" size={24} color={COLORS.gray} />
+                    <Text style={styles.participantName}>User {participant.user_id}</Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Bottom Buttons */}
       <View style={styles.bottomButtons}>
         <View style={styles.topButtons}>
-          <TouchableOpacity style={styles.messageButton}>
-            <Text style={styles.messageButtonText}>Message Host</Text>
-            <Ionicons name="chatbubble" size={20} color={COLORS.white} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.calendarButton}>
-            <Text style={styles.calendarButtonText}>Add to GCal</Text>
-            <Ionicons name="logo-google" size={20} color={COLORS.white} />
-          </TouchableOpacity>
+          {isHostView ? (
+            <>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={() => router.push(`/edit-game?id=${gameId}`)}
+              >
+                <Text style={styles.editButtonText}>Edit Details</Text>
+                <Ionicons name="pencil-outline" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={handleDeleteGame}
+              >
+                <Text style={styles.deleteButtonText}>Delete Game</Text>
+                <Ionicons name="trash-outline" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.messageButton}>
+                <Text style={styles.messageButtonText}>Message Host</Text>
+                <Ionicons name="chatbubble" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.calendarButton}>
+                <Text style={styles.calendarButtonText}>Add to GCal</Text>
+                <Ionicons name="logo-google" size={20} color={COLORS.white} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </SafeAreaView>
@@ -318,6 +409,61 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   calendarButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#FF4444',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  deleteButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  participantsContainer: {
+    backgroundColor: COLORS.lightGray,
+    padding: 12,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+  },
+  participantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray,
+  },
+  participantName: {
+    fontSize: 16,
+    color: COLORS.black,
+    marginLeft: 8,
+  },
+  noParticipantsText: {
+    fontSize: 16,
+    color: COLORS.gray,
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  editButtonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '500',

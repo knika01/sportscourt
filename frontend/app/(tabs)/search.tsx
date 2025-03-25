@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
 
@@ -16,20 +16,17 @@ const COLORS = {
   background: '#8BC485',
 };
 
-const SPORTS = ['All', 'Basketball', 'Tennis', 'Soccer', 'Volleyball', 'Badminton', 'Pickleball', 'Football'];
-const SKILL_LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
+const SPORTS = ['Basketball', 'Tennis', 'Soccer', 'Volleyball', 'Badminton', 'Pickleball', 'Football'];
+const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSport, setSelectedSport] = useState('All');
-  const [selectedSkillLevel, setSelectedSkillLevel] = useState('All');
+  const [selectedSport, setSelectedSport] = useState<string | null>(null);
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchGames();
-  }, []);
 
   const fetchGames = async () => {
     try {
@@ -48,22 +45,34 @@ export default function SearchScreen() {
     }
   };
 
+  // Initial fetch
+  useEffect(() => {
+    fetchGames();
+  }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchGames();
+    }, [])
+  );
+
   const clearFilters = () => {
-    setSelectedSport('All');
-    setSelectedSkillLevel('All');
+    setSelectedSport(null);
+    setSelectedSkillLevel(null);
+    setSelectedDate(null);
     setSearchQuery('');
   };
 
   // Filter games based on selected filters and search query
   const filteredGames = games.filter(game => {
-    const matchesSport = selectedSport === 'All' || game.title === selectedSport;
-    const matchesSkillLevel = selectedSkillLevel === 'All' || game.skill_level === selectedSkillLevel;
-    const matchesSearch = searchQuery === '' || 
-      game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSport = !selectedSport || game.sport === selectedSport;
+    const matchesSkillLevel = !selectedSkillLevel || game.skill_level === selectedSkillLevel;
+    const matchesDate = !selectedDate || new Date(game.date_time).toDateString() === new Date(selectedDate).toDateString();
     
-    return matchesSport && matchesSkillLevel && matchesSearch;
+    return matchesSearch && matchesSport && matchesSkillLevel && matchesDate;
   });
 
   const formatDateTime = (dateTime: string) => {
@@ -101,7 +110,23 @@ export default function SearchScreen() {
           {/* Sport Filter */}
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Sport</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroll}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  !selectedSport && styles.filterChipSelected
+                ]}
+                onPress={() => setSelectedSport(null)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  !selectedSport && styles.filterChipTextSelected
+                ]}>All</Text>
+              </TouchableOpacity>
               {SPORTS.map((sport) => (
                 <TouchableOpacity
                   key={sport}
@@ -114,9 +139,7 @@ export default function SearchScreen() {
                   <Text style={[
                     styles.filterChipText,
                     selectedSport === sport && styles.filterChipTextSelected
-                  ]}>
-                    {sport}
-                  </Text>
+                  ]}>{sport}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -143,6 +166,14 @@ export default function SearchScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </ScrollView>
+          </View>
+
+          {/* Date Filter */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Date</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {/* Implementation of date filtering would go here */}
             </ScrollView>
           </View>
 
@@ -200,6 +231,10 @@ export default function SearchScreen() {
                     <Text style={styles.detailText}>{formatDateTime(game.date_time)}</Text>
                   </View>
                   <View style={styles.detailRow}>
+                    <Ionicons name="football-outline" size={16} color={COLORS.gray} />
+                    <Text style={styles.detailText}>{game.sport}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
                     <Ionicons name="people-outline" size={16} color={COLORS.gray} />
                     <Text style={styles.detailText}>Max Players: {game.max_players}</Text>
                   </View>
@@ -248,8 +283,11 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 8,
     color: COLORS.black,
+    marginBottom: 8,
+  },
+  filterScroll: {
+    flexDirection: 'row',
   },
   filterChip: {
     paddingHorizontal: 16,
@@ -263,6 +301,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     color: COLORS.black,
+    fontSize: 14,
   },
   filterChipTextSelected: {
     color: COLORS.white,

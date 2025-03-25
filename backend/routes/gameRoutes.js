@@ -36,6 +36,7 @@ const validateGameInput = (req, res, next) => {
 // Routes
 router.get('/', gameController.fetchAllGames);  // Matches GET /games
 router.get('/user/:userId', gameController.getUserGames);  // Matches GET /games/user/:userId
+router.get('/hosted/:userId', gameController.getUserHostedGames);
 router.get('/:id', gameController.getGameById);
 router.post('/', validateGameInput, gameController.createGame);    // Matches POST /games
 router.put('/:id', validateGameInput, gameController.updateGame);

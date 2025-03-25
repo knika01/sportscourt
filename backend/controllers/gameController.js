@@ -55,10 +55,10 @@ const fetchAllGames = async (req, res) => {
 
 // Create a new game
 const createGame = async (req, res) => {
-  const { title, location, date_time, skill_level, max_players, created_by, description } = req.body;
+  const { title, sport, location, date_time, skill_level, max_players, created_by, description } = req.body;
 
   // Input validation
-  if (!title || !location || !date_time || !skill_level || !max_players || !created_by) {
+  if (!title || !sport || !location || !date_time || !skill_level || !max_players || !created_by) {
     return handleError(res, new Error('Missing required fields'), 400);
   }
 
@@ -75,10 +75,10 @@ const createGame = async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO games (title, location, date_time, skill_level, max_players, created_by, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO games (title, sport, location, date_time, skill_level, max_players, created_by, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [title, location, gameDate, skill_level, max_players, created_by, description]
+      [title, sport, location, gameDate, skill_level, max_players, created_by, description]
     );
     handleSuccess(res, result.rows[0], 201);
   } catch (err) {
@@ -103,7 +103,7 @@ const getGameById = async (req, res) => {
 // Update a game
 const updateGame = async (req, res) => {
   const { id } = req.params;
-  const { title, location, date_time, skill_level, max_players, description } = req.body;
+  const { title, sport, location, date_time, skill_level, max_players, description } = req.body;
 
   try {
     // Check if game exists
@@ -115,14 +115,15 @@ const updateGame = async (req, res) => {
     const result = await pool.query(
       `UPDATE games 
        SET title = COALESCE($1, title),
-           location = COALESCE($2, location),
-           date_time = COALESCE($3, date_time),
-           skill_level = COALESCE($4, skill_level),
-           max_players = COALESCE($5, max_players),
-           description = COALESCE($6, description)
-       WHERE id = $7
+           sport = COALESCE($2, sport),
+           location = COALESCE($3, location),
+           date_time = COALESCE($4, date_time),
+           skill_level = COALESCE($5, skill_level),
+           max_players = COALESCE($6, max_players),
+           description = COALESCE($7, description)
+       WHERE id = $8
        RETURNING *`,
-      [title, location, date_time, skill_level, max_players, description, id]
+      [title, sport, location, date_time, skill_level, max_players, description, id]
     );
     handleSuccess(res, result.rows[0]);
   } catch (err) {
@@ -170,11 +171,36 @@ const getUserGames = async (req, res) => {
   }
 };
 
+// Get games where user is the host
+const getUserHostedGames = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const query = `
+      SELECT * FROM games
+      WHERE created_by = $1
+      ORDER BY date_time DESC
+    `;
+    const result = await pool.query(query, [userId]);
+    
+    res.json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching user hosted games:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch user hosted games'
+    });
+  }
+};
+
 module.exports = {
   fetchAllGames,
   createGame,
   getGameById,
   updateGame,
   deleteGame,
-  getUserGames
+  getUserGames,
+  getUserHostedGames
 };

@@ -1,6 +1,12 @@
 import { API_URL } from './config';
 import { Game, CreateGameRequest, GameResponse } from '@/types/game';
 
+interface ApiResponse<T> {
+  status: 'success' | 'error';
+  message?: string;
+  data?: T;
+}
+
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -46,6 +52,19 @@ export const gameService = {
     }
   },
 
+  // Get games where user is the host
+  getUserHostedGames: async (userId: number): Promise<GameResponse> => {
+    try {
+      const url = `${API_URL}/games/hosted/${userId}`;
+      console.log('Fetching user hosted games from:', url);
+      const response = await fetch(url);
+      return await handleResponse(response);
+    } catch (error) {
+      console.error('Error fetching user hosted games:', error);
+      throw error;
+    }
+  },
+
   // Get a single game by ID
   getGameById: async (id: number): Promise<GameResponse> => {
     try {
@@ -79,7 +98,7 @@ export const gameService = {
   },
 
   // Update a game
-  updateGame: async (id: number, data: Partial<CreateGameRequest>): Promise<GameResponse> => {
+  updateGame: async (id: number, data: Partial<Game>): Promise<GameResponse> => {
     try {
       const url = `${API_URL}/games/${id}`;
       console.log('Updating game at:', url, 'with data:', data);

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
 import { gameParticipantService } from '@/services/gameParticipantService';
@@ -20,12 +20,9 @@ const COLORS = {
 
 export default function HomeScreen() {
   const [myGames, setMyGames] = useState<Game[]>([]);
+  const [hostedGames, setHostedGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const userId = 1; // TODO: Get from auth context
-
-  useEffect(() => {
-    fetchMyGames();
-  }, []);
 
   const fetchMyGames = async () => {
     try {
@@ -42,6 +39,32 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchHostedGames = async () => {
+    try {
+      const response = await gameService.getUserHostedGames(userId);
+      if (response.status === 'success') {
+        setHostedGames(response.data as Game[]);
+      }
+    } catch (error) {
+      console.error('Error fetching hosted games:', error);
+      Alert.alert('Error', 'Failed to load your hosted games');
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchMyGames();
+    fetchHostedGames();
+  }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchMyGames();
+      fetchHostedGames();
+    }, [])
+  );
+
   const handleLeaveGame = async (gameId: number) => {
     try {
       await gameParticipantService.leaveGame(gameId, userId);
@@ -54,16 +77,6 @@ export default function HomeScreen() {
       console.error('Error leaving game:', error);
       Alert.alert('Error', 'Failed to leave the game');
     }
-  };
-
-  const handleJoinGame = () => {
-    Alert.alert(
-      "Game Joined!",
-      "You have successfully joined the game. You will be notified when the game starts.",
-      [
-        { text: "OK", onPress: () => router.push('/') }
-      ]
-    );
   };
 
   const formatDate = (dateString: string) => {
@@ -106,7 +119,15 @@ export default function HomeScreen() {
         {isLoading ? (
           <ActivityIndicator size="large" color={COLORS.primary} />
         ) : myGames.length === 0 ? (
-          <Text style={styles.noGamesText}>You haven't joined any games yet</Text>
+          <View style={styles.noGamesContainer}>
+            <Text style={styles.noGamesText}>You haven't joined any games yet</Text>
+            <TouchableOpacity 
+              style={styles.findGamesButton}
+              onPress={() => router.push('/search')}
+            >
+              <Text style={styles.findGamesButtonText}>Find games now!</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           myGames.map((game) => (
             <View key={game.id} style={styles.gameCard}>
@@ -129,6 +150,10 @@ export default function HomeScreen() {
                     {formatDate(game.date_time)}, {formatTime(game.date_time)}
                   </Text>
                 </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="football-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>{game.sport}</Text>
+                </View>
                 {game.description && (
                   <View style={styles.detailRow}>
                     <Ionicons name="information-circle-outline" size={16} color={COLORS.gray} />
@@ -144,7 +169,7 @@ export default function HomeScreen() {
                   <Text style={styles.leaveButtonText}>Leave Game</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={styles.detailsButton}
+                  style={[styles.detailsButton, { marginRight: 0 }]}
                   onPress={() => router.push(`/game-details?id=${game.id}`)}
                 >
                   <Text style={styles.detailsButtonText}>View Details</Text>
@@ -154,44 +179,55 @@ export default function HomeScreen() {
           ))
         )}
 
-        {/* Recommended Games Section */}
-        <Text style={styles.sectionTitle}>Recommended for You</Text>
+        {/* Hosted Games Section */}
+        <Text style={styles.sectionTitle}>Games You Host</Text>
         
-        {/* Game Card 2 - Recommended Game */}
-        <View style={styles.gameCard}>
-          <View style={styles.gameHeader}>
-            <View>
-              <Text style={styles.gameTitle}>Tennis Match</Text>
-              <View style={styles.availableSlots}>
-                <Text style={styles.slotsText}>1 slot available</Text>
+        {hostedGames.length === 0 ? (
+          <Text style={styles.noGamesText}>You haven't hosted any games yet</Text>
+        ) : (
+          hostedGames.map((game) => (
+            <View key={game.id} style={styles.gameCard}>
+              <View style={styles.gameHeader}>
+                <View>
+                  <Text style={styles.gameTitle}>{game.title}</Text>
+                  <View style={styles.availableSlots}>
+                    <Text style={styles.slotsText}>You're hosting!</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.gameDetails}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>{game.location}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>
+                    {formatDate(game.date_time)}, {formatTime(game.date_time)}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Ionicons name="football-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.detailText}>{game.sport}</Text>
+                </View>
+                {game.description && (
+                  <View style={styles.detailRow}>
+                    <Ionicons name="information-circle-outline" size={16} color={COLORS.gray} />
+                    <Text style={styles.detailText}>{game.description}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.gameActions}>
+                <TouchableOpacity 
+                  style={[styles.detailsButton, { marginRight: 0 }]}
+                  onPress={() => router.push(`/game-details?id=${game.id}&isHost=true`)}
+                >
+                  <Text style={styles.detailsButtonText}>View Details</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-          <View style={styles.gameDetails}>
-            <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={16} color={COLORS.gray} />
-              <Text style={styles.detailText}>City Tennis Club</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="time-outline" size={16} color={COLORS.gray} />
-              <Text style={styles.detailText}>Tomorrow, 10:00 AM - 12:00 PM</Text>
-            </View>
-          </View>
-          <View style={styles.gameActions}>
-            <TouchableOpacity 
-              style={styles.joinButton}
-              onPress={handleJoinGame}
-            >
-              <Text style={styles.joinButtonText}>Join Game</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.detailsButton}
-              onPress={() => router.push('/game-details')}
-            >
-              <Text style={styles.detailsButtonText}>View Details</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          ))
+        )}
       </ScrollView>
 
       {/* Create Game Button */}
@@ -348,11 +384,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  noGamesContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
   noGamesText: {
-    textAlign: 'center',
-    color: COLORS.gray,
     fontSize: 16,
-    marginTop: 20,
+    color: COLORS.gray,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  findGamesButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  findGamesButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '500',
   },
   leaveButton: {
     backgroundColor: '#f44336',
@@ -363,6 +416,19 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   leaveButtonText: {
+    color: COLORS.white,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  deleteButton: {
+    backgroundColor: '#FF4444',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+  },
+  deleteButtonText: {
     color: COLORS.white,
     textAlign: 'center',
     fontWeight: '500',
