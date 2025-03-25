@@ -25,9 +25,9 @@ const validateJoinGame = (req, res, next) => {
 };
 
 // Routes
-router.post('/join', validateJoinGame, gameParticipantController.joinGame);
-router.delete('/:game_id/:user_id', gameParticipantController.leaveGame);
-router.get('/game/:game_id', gameParticipantController.getGameParticipants);
-router.get('/user/:user_id', gameParticipantController.getUserGames);
+router.post('/', validateJoinGame, gameParticipantController.joinGame);
+router.delete('/:gameId/user/:userId', gameParticipantController.leaveGame);
+router.get('/:gameId/users', gameParticipantController.getGameParticipants);
+router.get('/user/:userId', gameParticipantController.getUserGames);
 
 module.exports = router; 

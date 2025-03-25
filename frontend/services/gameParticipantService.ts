@@ -11,18 +11,22 @@ const handleResponse = async (response: Response) => {
 
 export const gameParticipantService = {
   // Join a game
-  joinGame: async (data: JoinGameRequest): Promise<GameParticipantResponse> => {
+  joinGame: async (gameId: number, userId: number): Promise<GameParticipantResponse> => {
     try {
-      const url = `${API_URL}/participants/join`;
-      console.log('Joining game at:', url, 'with data:', data);
+      const url = `${API_URL}/game-participants`;
+      console.log('Joining game at:', url);
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ game_id: gameId, user_id: userId }),
       });
-      return await handleResponse(response);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'An error occurred');
+      }
+      return data;
     } catch (error) {
       console.error('Error joining game:', error);
       throw error;
@@ -32,25 +36,33 @@ export const gameParticipantService = {
   // Leave a game
   leaveGame: async (gameId: number, userId: number): Promise<GameParticipantResponse> => {
     try {
-      const url = `${API_URL}/participants/${gameId}/${userId}`;
+      const url = `${API_URL}/game-participants/${gameId}/user/${userId}`;
       console.log('Leaving game at:', url);
       const response = await fetch(url, {
         method: 'DELETE',
       });
-      return await handleResponse(response);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'An error occurred');
+      }
+      return data;
     } catch (error) {
       console.error('Error leaving game:', error);
       throw error;
     }
   },
 
-  // Get all participants for a game
+  // Get participants for a game
   getGameParticipants: async (gameId: number): Promise<GameParticipantResponse> => {
     try {
-      const url = `${API_URL}/participants/game/${gameId}`;
+      const url = `${API_URL}/game-participants/${gameId}/users`;
       console.log('Fetching game participants from:', url);
       const response = await fetch(url);
-      return await handleResponse(response);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'An error occurred');
+      }
+      return data;
     } catch (error) {
       console.error('Error fetching game participants:', error);
       throw error;

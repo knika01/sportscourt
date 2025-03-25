@@ -1,5 +1,36 @@
 const pool = require('../db/pool');
 
+// Helper function for success responses
+const handleSuccess = (res, data, statusCode = 200) => {
+  res.status(statusCode).json({
+    status: 'success',
+    data
+  });
+};
+
+// Helper function for error responses
+const handleError = (res, error, statusCode = 500) => {
+  console.error('Error:', error);
+  res.status(statusCode).json({
+    status: 'error',
+    message: error.message || 'An error occurred'
+  });
+};
+
+// Get a single user by ID
+const getUserById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return handleError(res, new Error('User not found'), 404);
+    }
+    handleSuccess(res, result.rows[0]);
+  } catch (err) {
+    handleError(res, err);
+  }
+};
+
 // Fetch all users
 const fetchAllUsers = async (req, res) => {
     try {
@@ -98,4 +129,5 @@ module.exports = {
   groupAllPlayers,
   createUser,
   deleteUser,
+  getUserById,
 };

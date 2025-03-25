@@ -218,7 +218,7 @@ export default function GameDetailsScreen() {
                 participants.map((participant) => (
                   <View key={participant.id} style={styles.participantRow}>
                     <Ionicons name="person-circle-outline" size={24} color={COLORS.gray} />
-                    <Text style={styles.participantName}>User {participant.user_id}</Text>
+                    <Text style={styles.participantName}>{participant.first_name}</Text>
                   </View>
                 ))
               )}

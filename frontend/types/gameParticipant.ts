@@ -3,7 +3,9 @@ export interface GameParticipant {
   game_id: number;
   user_id: number;
   joined_at: string;
-  username?: string; // Optional, will be populated when fetching participants
+  first_name: string;
+  last_name: string;
+  username: string;
 }
 
 export interface JoinGameRequest {

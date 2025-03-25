@@ -77,20 +77,18 @@ const leaveGame = async (req, res) => {
   }
 };
 
-// Get participants for a game
+// Get all participants for a game with user details
 const getGameParticipants = async (req, res) => {
-  const { game_id } = req.params;
-
+  const { gameId } = req.params;
   try {
     const result = await pool.query(
-      `SELECT u.id, u.username, gp.joined_at
+      `SELECT gp.id, gp.user_id, gp.joined_at, u.first_name, u.last_name, u.username 
        FROM game_participants gp
        JOIN users u ON gp.user_id = u.id
        WHERE gp.game_id = $1
        ORDER BY gp.joined_at ASC`,
-      [game_id]
+      [gameId]
     );
-
     handleSuccess(res, result.rows);
   } catch (err) {
     handleError(res, err);

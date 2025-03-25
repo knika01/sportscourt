@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { gameService } from '@/services/gameService';
+import { userService } from '@/services/userService';
 import { Game } from '@/types/game';
 import { gameParticipantService } from '@/services/gameParticipantService';
 
@@ -22,7 +23,19 @@ export default function HomeScreen() {
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [hostedGames, setHostedGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState('');
   const userId = 1; // TODO: Get from auth context
+
+  const fetchUserData = async () => {
+    try {
+      const response = await userService.getUserById(userId);
+      if (response.status === 'success' && response.data) {
+        setUserName(response.data.first_name);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const fetchMyGames = async () => {
     try {
@@ -55,6 +68,7 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchMyGames();
     fetchHostedGames();
+    fetchUserData();
   }, []);
 
   // Refresh when screen comes into focus
@@ -62,6 +76,7 @@ export default function HomeScreen() {
     React.useCallback(() => {
       fetchMyGames();
       fetchHostedGames();
+      fetchUserData();
     }, [])
   );
 
@@ -105,7 +120,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>First Last</Text>
+          <Text style={styles.name}>{userName || 'User'}</Text>
         </View>
         <TouchableOpacity style={styles.notificationButton}>
           <Ionicons name="notifications-outline" size={24} color={COLORS.black} />
