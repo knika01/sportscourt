@@ -1,39 +1,42 @@
-import { API_URL } from './config';
+import { api } from './api';
 
-interface UserResponse {
+export interface UserResponse {
   status: 'success' | 'error';
-  data?: any;
   message?: string;
+  data?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    token?: string;
+  };
 }
 
-interface User {
-  id: number;
-  username: string;
+export interface LoginRequest {
   email: string;
+  password: string;
+}
+
+export interface SignupRequest {
   first_name: string;
   last_name: string;
-  created_at: string;
+  email: string;
+  password: string;
 }
 
-const handleResponse = async (response: Response): Promise<UserResponse> => {
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'An error occurred');
+class UserService {
+  async login(data: LoginRequest): Promise<UserResponse> {
+    return api.post<UserResponse['data']>('/auth/login', data);
   }
-  return data;
-};
 
-export const userService = {
-  // Get user details
-  getUserById: async (userId: number): Promise<UserResponse> => {
-    try {
-      const url = `${API_URL}/users/${userId}`;
-      console.log('Fetching user details from:', url);
-      const response = await fetch(url);
-      return await handleResponse(response);
-    } catch (error) {
-      console.error('Error fetching user details:', error);
-      throw error;
-    }
-  },
-}; 
+  async signup(data: SignupRequest): Promise<UserResponse> {
+    return api.post<UserResponse['data']>('/auth/signup', data);
+  }
+
+  async getUserById(userId: number): Promise<UserResponse> {
+    return api.get<UserResponse['data']>(`/users/${userId}`);
+  }
+}
+
+export const userService = new UserService(); 

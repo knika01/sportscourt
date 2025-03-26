@@ -20,6 +20,7 @@ const handleSuccess = (res, data, status = 200) => {
 // Fetch all games with optional filters
 const fetchAllGames = async (req, res) => {
   try {
+    console.log('Fetching all games...');
     const { location, skill_level, date } = req.query;
     let query = 'SELECT * FROM games';
     const params = [];
@@ -46,9 +47,13 @@ const fetchAllGames = async (req, res) => {
     }
 
     query += ' ORDER BY date_time ASC';
+    console.log('Executing query:', query);
+    console.log('With params:', params);
     const result = await pool.query(query, params);
+    console.log('Query result:', result.rows);
     handleSuccess(res, result.rows);
   } catch (err) {
+    console.error('Error in fetchAllGames:', err);
     handleError(res, err);
   }
 };
@@ -195,6 +200,32 @@ const getUserHostedGames = async (req, res) => {
   }
 };
 
+// Get games where user is a participant
+const getUserJoinedGames = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const query = `
+      SELECT g.* 
+      FROM games g
+      JOIN game_participants gp ON g.id = gp.game_id
+      WHERE gp.user_id = $1
+      ORDER BY g.date_time DESC
+    `;
+    const result = await pool.query(query, [userId]);
+    
+    res.json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching user joined games:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch user joined games'
+    });
+  }
+};
+
 module.exports = {
   fetchAllGames,
   createGame,
@@ -202,5 +233,6 @@ module.exports = {
   updateGame,
   deleteGame,
   getUserGames,
-  getUserHostedGames
+  getUserHostedGames,
+  getUserJoinedGames
 };

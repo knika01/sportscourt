@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
 
 // Colors from Figma
 const COLORS = {
@@ -17,6 +18,15 @@ const COLORS = {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,7 +41,7 @@ export default function ProfileScreen() {
 
         {/* Profile Header */}
         <View style={styles.header}>
-          <Text style={styles.name}>First Last</Text>
+          <Text style={styles.name}>{user?.first_name} {user?.last_name}</Text>
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
               <Ionicons name="person-circle" size={236} color={COLORS.lightGray} />
@@ -63,6 +73,14 @@ export default function ProfileScreen() {
             <Ionicons name="trophy" size={24} color={COLORS.black} />
           </View>
         </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -197,5 +215,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  logoutButton: {
+    backgroundColor: COLORS.primary,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 40,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

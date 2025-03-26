@@ -9,6 +9,7 @@ import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
 import { gameParticipantService } from '@/services/gameParticipantService';
 import { GameParticipant } from '@/types/gameParticipant';
+import { useAuth } from '@/context/AuthContext';
 
 // Colors from Figma
 const COLORS = {
@@ -25,8 +26,7 @@ export default function GameDetailsScreen() {
   const { id, isHost } = useLocalSearchParams();
   const gameId = Number(id);
   const isHostView = isHost === 'true';
-  // TODO: Get actual user ID from auth context
-  const userId = 1; // Temporary hardcoded user ID
+  const { user } = useAuth();
   const [game, setGame] = useState<Game | null>(null);
   const [participants, setParticipants] = useState<GameParticipant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,13 +35,9 @@ export default function GameDetailsScreen() {
   const fetchGameDetails = async () => {
     try {
       setLoading(true);
-      const response = await gameService.getGameById(gameId);
-      if (response.status === 'success') {
-        console.log('Game data received:', response.data);
-        setGame(response.data as Game);
-      } else {
-        setError('Failed to load game details');
-      }
+      const gameData = await gameService.getGameById(gameId);
+      setGame(gameData);
+      setError(null);
     } catch (err) {
       setError('Failed to load game details');
       console.error('Error fetching game details:', err);
@@ -52,10 +48,8 @@ export default function GameDetailsScreen() {
 
   const fetchParticipants = async () => {
     try {
-      const response = await gameParticipantService.getGameParticipants(gameId);
-      if (response.status === 'success') {
-        setParticipants(response.data as GameParticipant[]);
-      }
+      const participantsData = await gameParticipantService.getGameParticipants(gameId);
+      setParticipants(participantsData);
     } catch (error) {
       console.error('Error fetching participants:', error);
     }
@@ -121,8 +115,11 @@ export default function GameDetailsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Game Details</Text>
         <TouchableOpacity>
@@ -201,7 +198,7 @@ export default function GameDetailsScreen() {
           <Text style={styles.sectionTitle}>Player Count</Text>
           <GameParticipationButton
             gameId={gameId}
-            userId={userId}
+            userId={user?.id || 0}
             maxPlayers={game.max_players}
             onParticipantChange={handleParticipantChange}
           />
@@ -306,7 +303,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: COLORS.black,
     marginBottom: 12,
   },
   dropdown: {
@@ -467,5 +464,8 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: '500',
+  },
+  backButton: {
+    padding: 12,
   },
 }); 

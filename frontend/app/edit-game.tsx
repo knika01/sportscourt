@@ -53,23 +53,18 @@ export default function EditGameScreen() {
   const fetchGameDetails = async () => {
     try {
       setLoading(true);
-      const response = await gameService.getGameById(gameId);
-      if (response.status === 'success') {
-        const game = response.data as Game;
-        console.log('Game data received:', game);
-        console.log('Sport value:', game.sport);
-        setTitle(game.title);
-        setSport(game.sport);
-        const gameDate = new Date(game.date_time);
-        setDate(gameDate);
-        setTime(gameDate);
-        setLocation(game.location);
-        setDescription(game.description || '');
-        setSkillLevel(game.skill_level);
-        setMaxPlayers(game.max_players.toString());
-      } else {
-        Alert.alert('Error', 'Failed to load game details');
-      }
+      const game = await gameService.getGameById(gameId);
+      console.log('Game data received:', game);
+      console.log('Sport value:', game.sport);
+      setTitle(game.title);
+      setSport(game.sport);
+      const gameDate = new Date(game.date_time);
+      setDate(gameDate);
+      setTime(gameDate);
+      setLocation(game.location);
+      setDescription(game.description || '');
+      setSkillLevel(game.skill_level);
+      setMaxPlayers(game.max_players.toString());
     } catch (error) {
       console.error('Error fetching game details:', error);
       Alert.alert('Error', 'Failed to load game details');
@@ -100,16 +95,12 @@ export default function EditGameScreen() {
         max_players: parseInt(maxPlayers),
       };
 
-      const response = await gameService.updateGame(gameId, gameData);
-      if (response.status === 'success') {
-        Alert.alert(
-          'Success',
-          'Game updated successfully',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to update game');
-      }
+      await gameService.updateGame(gameId, gameData);
+      Alert.alert(
+        'Success',
+        'Game updated successfully',
+        [{ text: 'OK', onPress: () => router.back() }]
+      );
     } catch (error) {
       console.error('Error updating game:', error);
       Alert.alert('Error', 'Failed to update game');
@@ -134,13 +125,13 @@ export default function EditGameScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
           onPress={() => router.back()}
+          style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+          <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Game</Text>
-        <View style={{ width: 40 }} /> {/* Empty view for spacing */}
+        <View style={{ width: 40 }} />
       </View>
 
       {/* Form */}
@@ -365,12 +356,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 12,
   },
   headerTitle: {
     fontSize: 20,

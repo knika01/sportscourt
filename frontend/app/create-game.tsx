@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { gameService } from '../services/gameService';
+import { useAuth } from '@/context/AuthContext';
 
 // Colors from Figma
 const COLORS = {
@@ -23,6 +24,7 @@ const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
 
 export default function CreateGameScreen() {
+  const { user } = useAuth();
   // Form state
   const [title, setTitle] = useState('');
   const [sport, setSport] = useState('');
@@ -50,6 +52,11 @@ export default function CreateGameScreen() {
       return;
     }
 
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to create a game');
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -66,21 +73,17 @@ export default function CreateGameScreen() {
         description: description.trim() || null,
         skill_level: skillLevel,
         max_players: parseInt(playerCount),
-        created_by: 1 // TODO: Get from auth context
+        created_by: user.id
       };
 
       console.log('Creating game with data:', gameData);
-      const response = await gameService.createGame(gameData);
+      await gameService.createGame(gameData);
       
-      if (response.status === 'success') {
-        Alert.alert(
-          'Success',
-          'Game created successfully!',
-          [{ text: 'OK', onPress: () => router.push('/') }]
-        );
-      } else {
-        throw new Error(response.message || 'Failed to create game');
-      }
+      Alert.alert(
+        'Success',
+        'Game created successfully!',
+        [{ text: 'OK', onPress: () => router.replace('/') }]
+      );
     } catch (error) {
       console.error('Error creating game:', error);
       Alert.alert('Error', 'Failed to create game. Please try again.');
@@ -94,13 +97,13 @@ export default function CreateGameScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
           onPress={() => router.back()}
+          style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
+          <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Game</Text>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity>
           <Ionicons name="notifications-outline" size={24} color={COLORS.white} />
         </TouchableOpacity>
       </View>

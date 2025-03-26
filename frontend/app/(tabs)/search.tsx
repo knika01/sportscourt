@@ -31,12 +31,9 @@ export default function SearchScreen() {
   const fetchGames = async () => {
     try {
       setLoading(true);
-      const response = await gameService.fetchAllGames();
-      if (response.status === 'success') {
-        setGames(response.data as Game[]);
-      } else {
-        setError('Failed to fetch games');
-      }
+      const games = await gameService.searchGames();
+      setGames(games);
+      setError(null);
     } catch (error) {
       console.error('Error fetching games:', error);
       setError('Failed to fetch games');

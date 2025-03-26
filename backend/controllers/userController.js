@@ -31,6 +31,34 @@ const getUserById = async (req, res) => {
   }
 };
 
+// Update a user
+const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { first_name, last_name, username, email } = req.body;
+
+  try {
+    // Check if user exists
+    const userExists = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (userExists.rows.length === 0) {
+      return handleError(res, new Error('User not found'), 404);
+    }
+
+    const result = await pool.query(
+      `UPDATE users 
+       SET first_name = COALESCE($1, first_name),
+           last_name = COALESCE($2, last_name),
+           username = COALESCE($3, username),
+           email = COALESCE($4, email)
+       WHERE id = $5
+       RETURNING *`,
+      [first_name, last_name, username, email, id]
+    );
+    handleSuccess(res, result.rows[0]);
+  } catch (err) {
+    handleError(res, err);
+  }
+};
+
 // Fetch all users
 const fetchAllUsers = async (req, res) => {
     try {
@@ -130,4 +158,5 @@ module.exports = {
   createUser,
   deleteUser,
   getUserById,
+  updateUser,
 };

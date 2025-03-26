@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const gameParticipantController = require('../controllers/gameParticipantController');
+const auth = require('../middleware/auth');
 
 // Input validation middleware
 const validateJoinGame = (req, res, next) => {
@@ -24,10 +25,13 @@ const validateJoinGame = (req, res, next) => {
   next();
 };
 
-// Routes
-router.post('/', validateJoinGame, gameParticipantController.joinGame);
-router.delete('/:gameId/user/:userId', gameParticipantController.leaveGame);
-router.get('/:gameId/users', gameParticipantController.getGameParticipants);
-router.get('/user/:userId', gameParticipantController.getUserGames);
+// Public routes
+router.get('/game/:gameId', gameParticipantController.getGameParticipants);
+router.get('/user/:user_id', gameParticipantController.getUserGames);
+
+// Protected routes
+router.use(auth);
+router.post('/join', validateJoinGame, gameParticipantController.joinGame);
+router.delete('/:game_id/:user_id', gameParticipantController.leaveGame);
 
 module.exports = router; 

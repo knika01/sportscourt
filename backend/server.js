@@ -9,6 +9,7 @@ const morgan = require('morgan');
 const gameRoutes = require('./routes/gameRoutes');
 const userRoutes = require('./routes/userRoutes');
 const gameParticipantRoutes = require('./routes/gameParticipantRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 // Initialize the app and load environment variables
 dotenv.config();
@@ -68,7 +69,8 @@ app.get('/db-test', async (req, res) => {
 // Register routes
 app.use('/api/games', gameRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/participants', gameParticipantRoutes);
+app.use('/api/game-participants', gameParticipantRoutes);
+app.use('/api/auth', authRoutes);
 
 // 404 handler
 app.use((req, res) => {

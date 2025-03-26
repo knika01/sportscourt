@@ -27,12 +27,9 @@ export const GameParticipationButton: React.FC<GameParticipationButtonProps> = (
 
   const checkParticipation = async () => {
     try {
-      const response = await gameParticipantService.getGameParticipants(gameId);
-      if (response.status === 'success') {
-        const participants = response.data as GameParticipant[];
-        setParticipantCount(participants.length);
-        setIsParticipating(participants.some(p => p.user_id === userId));
-      }
+      const participants = await gameParticipantService.getGameParticipants(gameId);
+      setParticipantCount(participants.length);
+      setIsParticipating(participants.some(p => p.user_id === userId));
     } catch (error) {
       console.error('Error checking participation:', error);
     }
@@ -50,7 +47,7 @@ export const GameParticipationButton: React.FC<GameParticipationButtonProps> = (
           alert('Game is full!');
           return;
         }
-        await gameParticipantService.joinGame({ game_id: gameId, user_id: userId });
+        await gameParticipantService.joinGame(gameId, userId);
         setIsParticipating(true);
         setParticipantCount(prev => prev + 1);
         // Navigate to home page after successfully joining

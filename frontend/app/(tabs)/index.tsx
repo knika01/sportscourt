@@ -7,6 +7,7 @@ import { gameService } from '@/services/gameService';
 import { userService } from '@/services/userService';
 import { Game } from '@/types/game';
 import { gameParticipantService } from '@/services/gameParticipantService';
+import { useAuth } from '@/context/AuthContext';
 
 // Colors from Figma
 const COLORS = {
@@ -24,11 +25,12 @@ export default function HomeScreen() {
   const [hostedGames, setHostedGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState('');
-  const userId = 1; // TODO: Get from auth context
+  const { user } = useAuth();
 
   const fetchUserData = async () => {
+    if (!user?.id) return;
     try {
-      const response = await userService.getUserById(userId);
+      const response = await userService.getUserById(user.id);
       if (response.status === 'success' && response.data) {
         setUserName(response.data.first_name);
       }
@@ -38,12 +40,11 @@ export default function HomeScreen() {
   };
 
   const fetchMyGames = async () => {
+    if (!user?.id) return;
     try {
       setIsLoading(true);
-      const response = await gameService.getUserGames(userId);
-      if (response.status === 'success') {
-        setMyGames(response.data as Game[]);
-      }
+      const response = await gameService.getUserJoinedGames(user.id);
+      setMyGames(response || []);
     } catch (error) {
       console.error('Error fetching user games:', error);
       Alert.alert('Error', 'Failed to load your games');
@@ -53,11 +54,10 @@ export default function HomeScreen() {
   };
 
   const fetchHostedGames = async () => {
+    if (!user?.id) return;
     try {
-      const response = await gameService.getUserHostedGames(userId);
-      if (response.status === 'success') {
-        setHostedGames(response.data as Game[]);
-      }
+      const response = await gameService.getUserHostedGames(user.id);
+      setHostedGames(response || []);
     } catch (error) {
       console.error('Error fetching hosted games:', error);
       Alert.alert('Error', 'Failed to load your hosted games');
@@ -66,23 +66,28 @@ export default function HomeScreen() {
 
   // Initial fetch
   useEffect(() => {
-    fetchMyGames();
-    fetchHostedGames();
-    fetchUserData();
-  }, []);
+    if (user?.id) {
+      fetchMyGames();
+      fetchHostedGames();
+      fetchUserData();
+    }
+  }, [user]);
 
   // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      fetchMyGames();
-      fetchHostedGames();
-      fetchUserData();
-    }, [])
+      if (user?.id) {
+        fetchMyGames();
+        fetchHostedGames();
+        fetchUserData();
+      }
+    }, [user])
   );
 
   const handleLeaveGame = async (gameId: number) => {
+    if (!user?.id) return;
     try {
-      await gameParticipantService.leaveGame(gameId, userId);
+      await gameParticipantService.leaveGame(gameId, user.id);
       Alert.alert(
         "Game Left",
         "You have successfully left the game.",
