@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@expo/webpack-config": "^19.0.1",
+    "helmet": "^8.1.0",
     "react-dom": "^18.2.0",
     "react-native-web": "^0.19.13"
   }
