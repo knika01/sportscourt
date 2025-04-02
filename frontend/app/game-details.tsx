@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import MapView from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { GameParticipationButton } from '../components/GameParticipationButton';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
@@ -11,15 +11,14 @@ import { gameParticipantService } from '@/services/gameParticipantService';
 import { GameParticipant } from '@/types/gameParticipant';
 import { useAuth } from '@/context/AuthContext';
 
-// Colors from Figma
 const COLORS = {
-  primary: '#4CA354', // Green color
-  secondary: '#4B3DA3', // Blue color
+  primary: '#4CA354',
+  secondary: '#4B3DA3',
   white: '#FFFFFF',
   black: '#000000',
   gray: '#5E5E5F',
   lightGray: '#D9D9D9',
-  background: '#8BC485', // Light green background
+  background: '#8BC485',
 };
 
 export default function GameDetailsScreen() {
@@ -55,7 +54,6 @@ export default function GameDetailsScreen() {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchGameDetails();
     if (isHostView) {
@@ -63,7 +61,6 @@ export default function GameDetailsScreen() {
     }
   }, [gameId]);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchGameDetails();
@@ -74,21 +71,31 @@ export default function GameDetailsScreen() {
   );
 
   const handleParticipantChange = () => {
-    fetchGameDetails(); // Refresh game details when participation changes
+    fetchGameDetails();
   };
 
   const handleDeleteGame = async () => {
     try {
       await gameService.deleteGame(gameId);
-      Alert.alert(
-        "Game Deleted",
-        "You have successfully deleted the game.",
-        [{ text: "OK", onPress: () => router.replace('/') }]
-      );
+      Alert.alert('Game Deleted', 'You have successfully deleted the game.', [
+        { text: 'OK', onPress: () => router.replace('/') },
+      ]);
     } catch (error) {
       console.error('Error deleting game:', error);
       Alert.alert('Error', 'Failed to delete the game');
     }
+  };
+
+  const handleGetDirections = () => {
+    if (!game) return;
+
+    const { latitude, longitude } = game;
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${latitude},${longitude}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+
+    Linking.openURL(url);
   };
 
   if (loading) {
@@ -113,12 +120,8 @@ export default function GameDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Game Details</Text>
@@ -128,7 +131,6 @@ export default function GameDetailsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Title */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Title</Text>
           <View style={styles.dropdown}>
@@ -136,7 +138,6 @@ export default function GameDetailsScreen() {
           </View>
         </View>
 
-        {/* Sport */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sport</Text>
           <View style={styles.dropdown}>
@@ -144,7 +145,6 @@ export default function GameDetailsScreen() {
           </View>
         </View>
 
-        {/* Description */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
           <View style={styles.descriptionContainer}>
@@ -154,38 +154,46 @@ export default function GameDetailsScreen() {
           </View>
         </View>
 
-        {/* Time */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Time</Text>
           <View style={styles.timeContainer}>
             <View style={styles.timeInput}>
-              <Text style={styles.timeText}>
-                {new Date(game.date_time).toLocaleString()}
-              </Text>
+              <Text style={styles.timeText}>{new Date(game.date_time).toLocaleString()}</Text>
             </View>
           </View>
         </View>
 
-        {/* Location */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
           <View style={styles.locationInput}>
-            <Text style={styles.locationText}>{game.location}</Text>
+            <Text style={styles.locationText}>{game.location_name}</Text>
           </View>
           <View style={styles.mapContainer}>
             <MapView
               style={styles.map}
               initialRegion={{
-                latitude: 37.78825,
-                longitude: -122.4324,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
+                latitude: game.latitude,
+                longitude: game.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
               }}
-            />
+            >
+              <Marker
+                coordinate={{
+                  latitude: game.latitude,
+                  longitude: game.longitude,
+                }}
+                title={game.title}
+                description={game.location_name}
+              />
+            </MapView>
           </View>
+          <TouchableOpacity style={styles.directionsButton} onPress={handleGetDirections}>
+            <Ionicons name="navigate" size={20} color={COLORS.white} />
+            <Text style={styles.directionsButtonText}>Get Directions</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Skill Level */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skill Level</Text>
           <View style={styles.dropdown}>
@@ -193,7 +201,6 @@ export default function GameDetailsScreen() {
           </View>
         </View>
 
-        {/* Player Count */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Player Count</Text>
           <GameParticipationButton
@@ -204,7 +211,6 @@ export default function GameDetailsScreen() {
           />
         </View>
 
-        {/* Participants Section (Host View Only) */}
         {isHostView && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Participants</Text>
@@ -224,22 +230,15 @@ export default function GameDetailsScreen() {
         )}
       </ScrollView>
 
-      {/* Bottom Buttons */}
       <View style={styles.bottomButtons}>
         <View style={styles.topButtons}>
           {isHostView ? (
             <>
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={() => router.push(`/edit-game?id=${gameId}`)}
-              >
+              <TouchableOpacity style={styles.editButton} onPress={() => router.push(`/edit-game?id=${gameId}`)}>
                 <Text style={styles.editButtonText}>Edit Details</Text>
                 <Ionicons name="pencil-outline" size={20} color={COLORS.white} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.deleteButton}
-                onPress={handleDeleteGame}
-              >
+              <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteGame}>
                 <Text style={styles.deleteButtonText}>Delete Game</Text>
                 <Ionicons name="trash-outline" size={20} color={COLORS.white} />
               </TouchableOpacity>
@@ -263,24 +262,10 @@ export default function GameDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: COLORS.gray,
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: COLORS.white },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: COLORS.gray, fontSize: 16 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -288,24 +273,11 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: COLORS.primary,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.white,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.black,
-    marginBottom: 12,
-  },
+  backButton: { padding: 12 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.white },
+  content: { flex: 1, padding: 20 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.black, marginBottom: 12 },
   dropdown: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -316,10 +288,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.black,
   },
-  dropdownText: {
-    fontSize: 16,
-    color: COLORS.black,
-  },
+  dropdownText: { fontSize: 16, color: COLORS.black },
   descriptionContainer: {
     backgroundColor: COLORS.lightGray,
     padding: 12,
@@ -327,16 +296,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.black,
   },
-  descriptionText: {
-    fontSize: 16,
-    color: COLORS.black,
-    lineHeight: 24,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+  descriptionText: { fontSize: 16, color: COLORS.black, lineHeight: 24 },
+  timeContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   timeInput: {
     flex: 1,
     backgroundColor: COLORS.lightGray,
@@ -345,10 +306,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.black,
   },
-  timeText: {
-    fontSize: 16,
-    color: COLORS.black,
-  },
+  timeText: { fontSize: 16, color: COLORS.black },
   locationInput: {
     backgroundColor: COLORS.lightGray,
     padding: 12,
@@ -357,10 +315,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.black,
     marginBottom: 12,
   },
-  locationText: {
-    fontSize: 16,
-    color: COLORS.black,
-  },
+  locationText: { fontSize: 16, color: COLORS.black },
   mapContainer: {
     height: 159,
     borderRadius: 7,
@@ -368,18 +323,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.black,
   },
-  map: {
-    flex: 1,
-  },
-  bottomButtons: {
-    padding: 20,
-    gap: 12,
-  },
-  topButtons: {
+  map: { flex: 1 },
+  directionsButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.secondary,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
     gap: 8,
   },
+  directionsButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  bottomButtons: { padding: 20, gap: 12 },
+  topButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
   messageButton: {
     flex: 1,
     flexDirection: 'row',
@@ -390,11 +351,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  messageButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  messageButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '500' },
   calendarButton: {
     flex: 1,
     flexDirection: 'row',
@@ -405,11 +362,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 8,
   },
-  calendarButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  calendarButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '500' },
   deleteButton: {
     backgroundColor: '#FF4444',
     paddingVertical: 12,
@@ -420,11 +373,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  deleteButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '500',
+  deleteButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '500' },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
   },
+  editButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '500' },
   participantsContainer: {
     backgroundColor: COLORS.lightGray,
     padding: 12,
@@ -439,33 +399,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.gray,
   },
-  participantName: {
-    fontSize: 16,
-    color: COLORS.black,
-    marginLeft: 8,
-  },
-  noParticipantsText: {
-    fontSize: 16,
-    color: COLORS.gray,
-    textAlign: 'center',
-    paddingVertical: 8,
-  },
-  editButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  editButtonText: {
-    color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  backButton: {
-    padding: 12,
-  },
-}); 
+  participantName: { fontSize: 16, color: COLORS.black, marginLeft: 8 },
+  noParticipantsText: { fontSize: 16, color: COLORS.gray, textAlign: 'center', paddingVertical: 8 },
+});

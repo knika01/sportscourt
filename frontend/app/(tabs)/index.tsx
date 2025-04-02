@@ -162,7 +162,7 @@ export default function HomeScreen() {
               <View style={styles.gameDetails}>
                 <View style={styles.detailRow}>
                   <Ionicons name="location-outline" size={16} color={COLORS.gray} />
-                  <Text style={styles.detailText}>{game.location}</Text>
+                  <Text style={styles.detailText}>{game.location_name}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Ionicons name="time-outline" size={16} color={COLORS.gray} />
@@ -218,7 +218,7 @@ export default function HomeScreen() {
               <View style={styles.gameDetails}>
                 <View style={styles.detailRow}>
                   <Ionicons name="location-outline" size={16} color={COLORS.gray} />
-                  <Text style={styles.detailText}>{game.location}</Text>
+                  <Text style={styles.detailText}>{game.location_name}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Ionicons name="time-outline" size={16} color={COLORS.gray} />

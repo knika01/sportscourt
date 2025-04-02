@@ -64,7 +64,7 @@ export default function SearchScreen() {
   // Filter games based on selected filters and search query
   const filteredGames = games.filter(game => {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      game.location.toLowerCase().includes(searchQuery.toLowerCase());
+      game.location_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSport = !selectedSport || game.sport === selectedSport;
     const matchesSkillLevel = !selectedSkillLevel || game.skill_level === selectedSkillLevel;
     const matchesDate = !selectedDate || new Date(game.date_time).toDateString() === new Date(selectedDate).toDateString();
@@ -221,7 +221,7 @@ export default function SearchScreen() {
                 <View style={styles.gameDetails}>
                   <View style={styles.detailRow}>
                     <Ionicons name="location-outline" size={16} color={COLORS.gray} />
-                    <Text style={styles.detailText}>{game.location}</Text>
+                    <Text style={styles.detailText}>{game.location_name}</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Ionicons name="time-outline" size={16} color={COLORS.gray} />

@@ -2,7 +2,9 @@ export interface Game {
   id: number;
   title: string;
   sport: string;
-  location: string;
+  location_name: string;
+  latitude: number;
+  longitude: number;
   date_time: string;
   description: string | null;
   skill_level: string;
@@ -14,7 +16,9 @@ export interface Game {
 export interface CreateGameRequest {
   title: string;
   sport: string;
-  location: string;
+  location_name: string;
+  latitude: number;
+  longitude: number;
   date_time: string;
   description: string | null;
   skill_level: string;

@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS games (
     id SERIAL PRIMARY KEY,
     title VARCHAR(100) NOT NULL,
     sport VARCHAR(50) NOT NULL,
-    location VARCHAR(255) NOT NULL,
+    location_name VARCHAR(255) NOT NULL,      -- New
+    latitude DOUBLE PRECISION NOT NULL,       -- New
+    longitude DOUBLE PRECISION NOT NULL,      -- New
     date_time TIMESTAMP WITH TIME ZONE NOT NULL,
     skill_level VARCHAR(20) NOT NULL,
     max_players INTEGER NOT NULL CHECK (max_players >= 2),
@@ -36,3 +38,9 @@ CREATE TABLE IF NOT EXISTS game_participants (
 INSERT INTO users (username, email, password_hash)
 VALUES ('test_user', 'test@example.com', 'dummy_hash')
 ON CONFLICT (username) DO NOTHING; 
+
+ALTER TABLE games
+  DROP COLUMN IF EXISTS location,
+  ADD COLUMN location_name VARCHAR(255) NOT NULL,
+  ADD COLUMN latitude DOUBLE PRECISION NOT NULL,
+  ADD COLUMN longitude DOUBLE PRECISION NOT NULL;

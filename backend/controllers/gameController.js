@@ -58,32 +58,40 @@ const fetchAllGames = async (req, res) => {
   }
 };
 
-// Create a new game
 const createGame = async (req, res) => {
-  const { title, sport, location, date_time, skill_level, max_players, created_by, description } = req.body;
+  const {
+    title,
+    sport,
+    location_name,
+    latitude,
+    longitude,
+    date_time,
+    skill_level,
+    max_players,
+    created_by,
+    description
+  } = req.body;
 
   // Input validation
-  if (!title || !sport || !location || !date_time || !skill_level || !max_players || !created_by) {
+  if (!title || !sport || !location_name || !latitude || !longitude || !date_time || !skill_level || !max_players || !created_by) {
     return handleError(res, new Error('Missing required fields'), 400);
   }
 
-  // Validate date format
   const gameDate = new Date(date_time);
   if (isNaN(gameDate.getTime())) {
     return handleError(res, new Error('Invalid date format'), 400);
   }
 
-  // Validate max_players
   if (max_players < 2) {
     return handleError(res, new Error('Maximum players must be at least 2'), 400);
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO games (title, sport, location, date_time, skill_level, max_players, created_by, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO games (title, sport, location_name, latitude, longitude, date_time, skill_level, max_players, created_by, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [title, sport, location, gameDate, skill_level, max_players, created_by, description]
+      [title, sport, location_name, latitude, longitude, gameDate, skill_level, max_players, created_by, description]
     );
     handleSuccess(res, result.rows[0], 201);
   } catch (err) {
@@ -105,13 +113,21 @@ const getGameById = async (req, res) => {
   }
 };
 
-// Update a game
 const updateGame = async (req, res) => {
   const { id } = req.params;
-  const { title, sport, location, date_time, skill_level, max_players, description } = req.body;
+  const {
+    title,
+    sport,
+    location_name,
+    latitude,
+    longitude,
+    date_time,
+    skill_level,
+    max_players,
+    description
+  } = req.body;
 
   try {
-    // Check if game exists
     const gameExists = await pool.query('SELECT * FROM games WHERE id = $1', [id]);
     if (gameExists.rows.length === 0) {
       return handleError(res, new Error('Game not found'), 404);
@@ -121,14 +137,16 @@ const updateGame = async (req, res) => {
       `UPDATE games 
        SET title = COALESCE($1, title),
            sport = COALESCE($2, sport),
-           location = COALESCE($3, location),
-           date_time = COALESCE($4, date_time),
-           skill_level = COALESCE($5, skill_level),
-           max_players = COALESCE($6, max_players),
-           description = COALESCE($7, description)
-       WHERE id = $8
+           location_name = COALESCE($3, location_name),
+           latitude = COALESCE($4, latitude),
+           longitude = COALESCE($5, longitude),
+           date_time = COALESCE($6, date_time),
+           skill_level = COALESCE($7, skill_level),
+           max_players = COALESCE($8, max_players),
+           description = COALESCE($9, description)
+       WHERE id = $10
        RETURNING *`,
-      [title, sport, location, date_time, skill_level, max_players, description, id]
+      [title, sport, location_name, latitude, longitude, date_time, skill_level, max_players, description, id]
     );
     handleSuccess(res, result.rows[0]);
   } catch (err) {
