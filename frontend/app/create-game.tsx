@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -9,7 +20,6 @@ import Constants from 'expo-constants';
 import { gameService } from '../services/gameService';
 import { useAuth } from '@/context/AuthContext';
 
-// Colors from Figma
 const COLORS = {
   primary: '#4CA354',
   secondary: '#4B3DA3',
@@ -24,10 +34,11 @@ const SPORTS = ['Tennis', 'Basketball', 'Volleyball', 'Badminton', 'Pickleball',
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_API_KEY = Constants.expoConfig?.extra?.googlePlacesApiKey || '';
 
 export default function CreateGameScreen() {
   const { user } = useAuth();
+
   const [title, setTitle] = useState('');
   const [sport, setSport] = useState('');
   const [date, setDate] = useState(new Date());
@@ -39,13 +50,6 @@ export default function CreateGameScreen() {
   const [description, setDescription] = useState('');
   const [skillLevel, setSkillLevel] = useState('');
   const [playerCount, setPlayerCount] = useState('');
-
-  const [showSportModal, setShowSportModal] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [showSkillLevelModal, setShowSkillLevelModal] = useState(false);
-  const [showPlayerCountModal, setShowPlayerCountModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePost = async () => {
@@ -75,15 +79,12 @@ export default function CreateGameScreen() {
         description: description.trim() || null,
         skill_level: skillLevel,
         max_players: parseInt(playerCount),
-        created_by: user.id
+        created_by: user.id,
       };
 
-      console.log('Creating game with data:', gameData);
       await gameService.createGame(gameData);
 
-      Alert.alert('Success', 'Game created successfully!', [
-        { text: 'OK', onPress: () => router.replace('/') }
-      ]);
+      Alert.alert('Success', 'Game created successfully!', [{ text: 'OK', onPress: () => router.replace('/') }]);
     } catch (error) {
       console.error('Error creating game:', error);
       Alert.alert('Error', 'Failed to create game. Please try again.');
@@ -99,13 +100,15 @@ export default function CreateGameScreen() {
           <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Game</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color={COLORS.white} />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.formContainer}>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={100}
+      >
+        <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           {/* Title */}
           <View style={styles.input}>
             <Text style={styles.inputLabel}>Title</Text>
@@ -119,27 +122,26 @@ export default function CreateGameScreen() {
           </View>
 
           {/* Sport */}
-          <TouchableOpacity style={styles.input} onPress={() => setShowSportModal(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => Alert.alert('Modal', 'Implement sport picker')}>
             <Text style={styles.inputLabel}>Sport</Text>
             <Text style={styles.inputValue}>{sport || 'Select Sport'}</Text>
           </TouchableOpacity>
 
           {/* Date */}
-          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => Alert.alert('Modal', 'Implement date picker')}>
             <Text style={styles.inputLabel}>Date</Text>
             <Text style={styles.inputValue}>{date.toLocaleDateString()}</Text>
           </TouchableOpacity>
 
           {/* Time */}
           <View style={styles.timeContainer}>
-            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowStartTimePicker(true)}>
+            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => Alert.alert('Time Picker')}>
               <Text style={styles.inputLabel}>Start Time</Text>
               <Text style={styles.inputValue}>
                 {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowEndTimePicker(true)}>
+            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => Alert.alert('Time Picker')}>
               <Text style={styles.inputLabel}>End Time</Text>
               <Text style={styles.inputValue}>
                 {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -147,7 +149,7 @@ export default function CreateGameScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Location */}
+          {/* Location (Google Places) */}
           <View style={styles.input}>
             <Text style={styles.inputLabel}>Location</Text>
             <GooglePlacesAutocomplete
@@ -159,9 +161,10 @@ export default function CreateGameScreen() {
                 setLatitude(details.geometry.location.lat);
                 setLongitude(details.geometry.location.lng);
               }}
-              query={{
-                key: GOOGLE_MAPS_API_KEY,
-                language: 'en',
+              query={{ key: GOOGLE_API_KEY, language: 'en' }}
+              textInputProps={{
+                value: locationName,
+                onChangeText: setLocationName,
               }}
               styles={{
                 textInput: {
@@ -172,9 +175,7 @@ export default function CreateGameScreen() {
                   backgroundColor: COLORS.white,
                   paddingHorizontal: 10,
                 },
-                container: {
-                  flex: 0,
-                },
+                container: { flex: 0 },
               }}
               enablePoweredByContainer={false}
             />
@@ -195,20 +196,20 @@ export default function CreateGameScreen() {
           </View>
 
           {/* Skill Level */}
-          <TouchableOpacity style={styles.input} onPress={() => setShowSkillLevelModal(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => Alert.alert('Modal', 'Implement skill level picker')}>
             <Text style={styles.inputLabel}>Skill Level</Text>
             <Text style={styles.inputValue}>{skillLevel || 'Select Skill Level'}</Text>
           </TouchableOpacity>
 
           {/* Player Count */}
-          <TouchableOpacity style={styles.input} onPress={() => setShowPlayerCountModal(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => Alert.alert('Modal', 'Implement player count picker')}>
             <Text style={styles.inputLabel}>Player Count</Text>
             <Text style={styles.inputValue}>{playerCount || 'Select Player Count'}</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      {/* Submit */}
+      {/* Post Button */}
       <TouchableOpacity
         style={[styles.postButton, isLoading && styles.postButtonDisabled]}
         onPress={handlePost}
@@ -216,14 +217,9 @@ export default function CreateGameScreen() {
       >
         {isLoading ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.postButtonText}>Post</Text>}
       </TouchableOpacity>
-
-      {/* Modals below (unchanged) */}
-      {/* ... sport, skill level, player count, date/time pickers ... */}
     </SafeAreaView>
   );
 }
-
-import { TextInput } from 'react-native';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.white },
@@ -237,7 +233,7 @@ const styles = StyleSheet.create({
   backButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.white },
   content: { flex: 1 },
-  formContainer: { padding: 20, backgroundColor: COLORS.background, minHeight: '100%' },
+  formContainer: { padding: 20, backgroundColor: COLORS.background },
   input: { backgroundColor: COLORS.white, borderRadius: 8, padding: 16, marginBottom: 16 },
   inputLabel: { fontSize: 14, color: COLORS.gray, marginBottom: 8 },
   inputValue: { fontSize: 16, color: COLORS.black },

@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
@@ -22,8 +33,7 @@ const COLORS = {
 const SPORTS = ['Tennis', 'Basketball', 'Volleyball', 'Badminton', 'Pickleball', 'Football', 'Soccer'];
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
-
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_API_KEY = Constants.expoConfig?.extra?.googlePlacesApiKey || '';
 
 export default function EditGameScreen() {
   const { id } = useLocalSearchParams();
@@ -132,8 +142,12 @@ export default function EditGameScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.formContainer}>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={100}
+      >
+        <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.input}>
             <Text style={styles.inputLabel}>Title</Text>
             <TextInput
@@ -147,9 +161,7 @@ export default function EditGameScreen() {
 
           <TouchableOpacity style={styles.input} onPress={() => setShowSportModal(true)}>
             <Text style={styles.inputLabel}>Sport</Text>
-            <Text style={[styles.inputValue, sport ? styles.selectedValue : styles.placeholderValue]}>
-              {sport || 'Select Sport'}
-            </Text>
+            <Text style={styles.inputValue}>{sport || 'Select Sport'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
@@ -159,9 +171,7 @@ export default function EditGameScreen() {
 
           <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
             <Text style={styles.inputLabel}>Time</Text>
-            <Text style={styles.inputValue}>
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+            <Text style={styles.inputValue}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
           </TouchableOpacity>
 
           <View style={styles.input}>
@@ -175,14 +185,8 @@ export default function EditGameScreen() {
                 setLatitude(details.geometry.location.lat);
                 setLongitude(details.geometry.location.lng);
               }}
-              query={{
-                key: GOOGLE_MAPS_API_KEY,
-                language: 'en',
-              }}
-              textInputProps={{
-                value: locationName,
-                onChangeText: setLocationName,
-              }}
+              query={{ key: GOOGLE_API_KEY, language: 'en' }}
+              textInputProps={{ value: locationName, onChangeText: setLocationName }}
               styles={{
                 textInput: {
                   height: 40,
@@ -192,9 +196,7 @@ export default function EditGameScreen() {
                   backgroundColor: COLORS.lightGray,
                   paddingHorizontal: 10,
                 },
-                container: {
-                  flex: 0,
-                },
+                container: { flex: 0 },
               }}
               enablePoweredByContainer={false}
             />
@@ -222,8 +224,8 @@ export default function EditGameScreen() {
             <Text style={styles.inputLabel}>Max Players</Text>
             <Text style={styles.inputValue}>{maxPlayers || 'Select Max Players'}</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <TouchableOpacity
         style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -232,8 +234,6 @@ export default function EditGameScreen() {
       >
         {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
       </TouchableOpacity>
-
-      {/* Modals omitted for brevity (unchanged) */}
     </SafeAreaView>
   );
 }
@@ -278,30 +278,4 @@ const styles = StyleSheet.create({
   },
   saveButtonDisabled: { opacity: 0.7 },
   saveButtonText: { color: COLORS.white, fontSize: 16, fontWeight: '500' },
-  modalContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 20,
-    width: '80%',
-    maxHeight: '80%',
-  },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.black, marginBottom: 16 },
-  modalOption: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-  },
-  modalOptionText: { fontSize: 16, color: COLORS.black },
-  selectedValue: { color: COLORS.black },
-  placeholderValue: { color: COLORS.gray },
 });
