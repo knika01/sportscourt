@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Act
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import MapView from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 import { GameParticipationButton } from '../components/GameParticipationButton';
 import { gameService } from '@/services/gameService';
 import { Game } from '@/types/game';
@@ -173,15 +173,23 @@ export default function GameDetailsScreen() {
             <Text style={styles.locationText}>{game.location}</Text>
           </View>
           <View style={styles.mapContainer}>
-            <MapView
+          <MapView
               style={styles.map}
               initialRegion={{
-                latitude: 37.78825,
-                longitude: -122.4324,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
+                latitude: game.latitude || 42.2808,
+                longitude: game.longitude || -83.7382,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
               }}
-            />
+            >
+              <Marker
+                coordinate={{
+                  latitude: game.latitude || 42.2808,
+                  longitude: game.longitude || -83.7382,
+                }}
+                title={game.location}
+              />
+            </MapView>
           </View>
         </View>
 

@@ -3,6 +3,8 @@ export interface Game {
   title: string;
   sport: string;
   location: string;
+  latitude: number;
+  longitude: number;
   date_time: string;
   description: string | null;
   skill_level: string;

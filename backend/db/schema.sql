@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS games (
     title VARCHAR(100) NOT NULL,
     sport VARCHAR(50) NOT NULL,
     location VARCHAR(255) NOT NULL,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     date_time TIMESTAMP WITH TIME ZONE NOT NULL,
     skill_level VARCHAR(20) NOT NULL,
     max_players INTEGER NOT NULL CHECK (max_players >= 2),
@@ -29,10 +31,10 @@ CREATE TABLE IF NOT EXISTS game_participants (
     game_id INTEGER REFERENCES games(id) ON DELETE CASCADE,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(game_id, user_id)  -- Prevent duplicate participation
+    UNIQUE(game_id, user_id)
 );
 
 -- Insert a test user
 INSERT INTO users (username, email, password_hash)
 VALUES ('test_user', 'test@example.com', 'dummy_hash')
-ON CONFLICT (username) DO NOTHING; 
+ON CONFLICT (username) DO NOTHING;

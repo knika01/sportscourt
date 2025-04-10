@@ -7,21 +7,26 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { gameService } from '../services/gameService';
 import { Game } from '@/types/game';
 
-// Colors from Figma
 const COLORS = {
-  primary: '#4CA354', // Green color
-  secondary: '#4B3DA3', // Blue color
+  primary: '#4CA354',
+  secondary: '#4B3DA3',
   white: '#FFFFFF',
   black: '#000000',
   gray: '#5E5E5F',
   lightGray: '#D9D9D9',
-  background: '#8BC485', // Light green background
+  background: '#8BC485',
 };
 
-// Constants for dropdowns
 const SPORTS = ['Tennis', 'Basketball', 'Volleyball', 'Badminton', 'Pickleball', 'Football', 'Soccer'];
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
+
+const LOCATIONS = [
+  { name: 'Palmer Field', latitude: 42.2808, longitude: -83.7382 },
+  { name: 'Mitchell Field', latitude: 42.2767, longitude: -83.7265 },
+  { name: 'Burns Park', latitude: 42.2645, longitude: -83.7306 },
+  { name: 'Fuller Park', latitude: 42.2812, longitude: -83.7115 },
+];
 
 export default function EditGameScreen() {
   const { id } = useLocalSearchParams();
@@ -29,22 +34,27 @@ export default function EditGameScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form state
   const [title, setTitle] = useState('');
   const [sport, setSport] = useState('');
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
-  const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [skillLevel, setSkillLevel] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('');
-
-  // Modal states
+  type Location = {
+    name: string;
+    latitude: number;
+    longitude: number;
+  };
+  
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  
   const [showSportModal, setShowSportModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showSkillLevelModal, setShowSkillLevelModal] = useState(false);
   const [showPlayerCountModal, setShowPlayerCountModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   useEffect(() => {
     fetchGameDetails();
@@ -54,14 +64,11 @@ export default function EditGameScreen() {
     try {
       setLoading(true);
       const game = await gameService.getGameById(gameId);
-      console.log('Game data received:', game);
-      console.log('Sport value:', game.sport);
       setTitle(game.title);
       setSport(game.sport);
       const gameDate = new Date(game.date_time);
       setDate(gameDate);
       setTime(gameDate);
-      setLocation(game.location);
       setDescription(game.description || '');
       setSkillLevel(game.skill_level);
       setMaxPlayers(game.max_players.toString());
@@ -74,7 +81,7 @@ export default function EditGameScreen() {
   };
 
   const handleSave = async () => {
-    if (!title || !sport || !location || !skillLevel || !maxPlayers) {
+    if (!title || !sport || !selectedLocation || !skillLevel || !maxPlayers) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -89,18 +96,18 @@ export default function EditGameScreen() {
         title,
         sport,
         date_time: dateTime.toISOString(),
-        location,
+        location: selectedLocation.name,
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
         description,
         skill_level: skillLevel,
         max_players: parseInt(maxPlayers),
       };
 
       await gameService.updateGame(gameId, gameData);
-      Alert.alert(
-        'Success',
-        'Game updated successfully',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      Alert.alert('Success', 'Game updated successfully', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
     } catch (error) {
       console.error('Error updating game:', error);
       Alert.alert('Error', 'Failed to update game');
@@ -122,22 +129,16 @@ export default function EditGameScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Game</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Form */}
       <ScrollView style={styles.content}>
         <View style={styles.formContainer}>
-          {/* Title */}
           <View style={styles.input}>
             <Text style={styles.inputLabel}>Title</Text>
             <TextInput
@@ -149,52 +150,28 @@ export default function EditGameScreen() {
             />
           </View>
 
-          {/* Sport Selection */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowSportModal(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowSportModal(true)}>
             <Text style={styles.inputLabel}>Sport</Text>
-            <Text style={[styles.inputValue, sport ? styles.selectedValue : styles.placeholderValue]}>
-              {sport || 'Select Sport'}
-            </Text>
+            <Text style={styles.inputValue}>{sport || 'Select Sport'}</Text>
           </TouchableOpacity>
 
-          {/* Date Selection */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowDatePicker(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.inputLabel}>Date</Text>
-            <Text style={styles.inputValue}>
-              {date.toLocaleDateString()}
-            </Text>
+            <Text style={styles.inputValue}>{date.toLocaleDateString()}</Text>
           </TouchableOpacity>
 
-          {/* Time Selection */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowTimePicker(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
             <Text style={styles.inputLabel}>Time</Text>
             <Text style={styles.inputValue}>
               {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </TouchableOpacity>
 
-          {/* Location */}
-          <View style={styles.input}>
+          <TouchableOpacity style={styles.input} onPress={() => setShowLocationModal(true)}>
             <Text style={styles.inputLabel}>Location</Text>
-            <TextInput
-              style={styles.textInput}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Enter location"
-              placeholderTextColor={COLORS.gray}
-            />
-          </View>
+            <Text style={styles.inputValue}>{selectedLocation?.name || 'Select Location'}</Text>
+          </TouchableOpacity>
 
-          {/* Description */}
           <View style={styles.input}>
             <Text style={styles.inputLabel}>Description</Text>
             <TextInput
@@ -208,40 +185,27 @@ export default function EditGameScreen() {
             />
           </View>
 
-          {/* Skill Level */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowSkillLevelModal(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowSkillLevelModal(true)}>
             <Text style={styles.inputLabel}>Skill Level</Text>
             <Text style={styles.inputValue}>{skillLevel || 'Select Skill Level'}</Text>
           </TouchableOpacity>
 
-          {/* Max Players */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowPlayerCountModal(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowPlayerCountModal(true)}>
             <Text style={styles.inputLabel}>Max Players</Text>
             <Text style={styles.inputValue}>{maxPlayers || 'Select Max Players'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Save Button */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.saveButton, saving && styles.saveButtonDisabled]}
         onPress={handleSave}
         disabled={saving}
       >
-        {saving ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        )}
+        {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
       </TouchableOpacity>
 
-      {/* Sport Selection Modal */}
+      {/* Modals */}
       {showSportModal && (
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -262,7 +226,26 @@ export default function EditGameScreen() {
         </View>
       )}
 
-      {/* Date Picker */}
+      {showLocationModal && (
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            {LOCATIONS.map((loc) => (
+              <TouchableOpacity
+                key={loc.name}
+                style={styles.modalOption}
+                onPress={() => {
+                  setSelectedLocation(loc);
+                  setShowLocationModal(false);
+                }}
+              >
+                <Text style={styles.modalOptionText}>{loc.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {showDatePicker && (
         <DateTimePicker
           value={date}
@@ -270,15 +253,12 @@ export default function EditGameScreen() {
           display="default"
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
-            if (selectedDate) {
-              setDate(selectedDate);
-            }
+            if (selectedDate) setDate(selectedDate);
           }}
           minimumDate={new Date()}
         />
       )}
 
-      {/* Time Picker */}
       {showTimePicker && (
         <DateTimePicker
           value={time}
@@ -286,14 +266,11 @@ export default function EditGameScreen() {
           display="default"
           onChange={(event, selectedTime) => {
             setShowTimePicker(false);
-            if (selectedTime) {
-              setTime(selectedTime);
-            }
+            if (selectedTime) setTime(selectedTime);
           }}
         />
       )}
 
-      {/* Skill Level Modal */}
       {showSkillLevelModal && (
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
@@ -314,7 +291,6 @@ export default function EditGameScreen() {
         </View>
       )}
 
-      {/* Player Count Modal */}
       {showPlayerCountModal && (
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>

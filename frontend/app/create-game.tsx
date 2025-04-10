@@ -1,3 +1,4 @@
+// create-game.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,47 +8,58 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { gameService } from '../services/gameService';
 import { useAuth } from '@/context/AuthContext';
 
-// Colors from Figma
 const COLORS = {
-  primary: '#4CA354', // Green color
-  secondary: '#4B3DA3', // Blue color
+  primary: '#4CA354',
+  secondary: '#4B3DA3',
   white: '#FFFFFF',
   black: '#000000',
   gray: '#5E5E5F',
   lightGray: '#D9D9D9',
-  background: '#8BC485', // Light green background
+  background: '#8BC485',
 };
 
-// Constants for dropdowns
 const SPORTS = ['Tennis', 'Basketball', 'Volleyball', 'Badminton', 'Pickleball', 'Football', 'Soccer'];
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
 
+const LOCATIONS = [
+  { name: 'Palmer Field', latitude: 42.2808, longitude: -83.7382 },
+  { name: 'Mitchell Field', latitude: 42.2767, longitude: -83.7265 },
+  { name: 'Burns Park', latitude: 42.2645, longitude: -83.7306 },
+  { name: 'Fuller Park', latitude: 42.2812, longitude: -83.7115 },
+];
+
 export default function CreateGameScreen() {
   const { user } = useAuth();
-  // Form state
+
   const [title, setTitle] = useState('');
   const [sport, setSport] = useState('');
   const [date, setDate] = useState(new Date());
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
-  const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [skillLevel, setSkillLevel] = useState('');
   const [playerCount, setPlayerCount] = useState('');
-
-  // Modal states
+  type Location = {
+    name: string;
+    latitude: number;
+    longitude: number;
+  };
+  
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  
   const [showSportModal, setShowSportModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [showSkillLevelModal, setShowSkillLevelModal] = useState(false);
   const [showPlayerCountModal, setShowPlayerCountModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePost = async () => {
-    if (!title || !sport || !location || !skillLevel || !playerCount) {
+    if (!title || !sport || !selectedLocation || !skillLevel || !playerCount) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -59,8 +71,6 @@ export default function CreateGameScreen() {
 
     try {
       setIsLoading(true);
-      
-      // Combine date and time into a single datetime string
       const dateTime = new Date(date);
       dateTime.setHours(startTime.getHours());
       dateTime.setMinutes(startTime.getMinutes());
@@ -68,22 +78,21 @@ export default function CreateGameScreen() {
       const gameData = {
         title,
         sport,
-        location,
+        location: selectedLocation.name,
+        latitude: selectedLocation.latitude,
+        longitude: selectedLocation.longitude,
         date_time: dateTime.toISOString(),
         description: description.trim() || null,
         skill_level: skillLevel,
         max_players: parseInt(playerCount),
-        created_by: user.id
+        created_by: user.id,
       };
 
-      console.log('Creating game with data:', gameData);
       await gameService.createGame(gameData);
-      
-      Alert.alert(
-        'Success',
-        'Game created successfully!',
-        [{ text: 'OK', onPress: () => router.replace('/') }]
-      );
+
+      Alert.alert('Success', 'Game created successfully!', [
+        { text: 'OK', onPress: () => router.replace('/') },
+      ]);
     } catch (error) {
       console.error('Error creating game:', error);
       Alert.alert('Error', 'Failed to create game. Please try again.');
@@ -96,19 +105,13 @@ export default function CreateGameScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="close" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Game</Text>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color={COLORS.white} />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* Form */}
       <ScrollView style={styles.content}>
         <View style={styles.formContainer}>
           {/* Title */}
@@ -123,42 +126,28 @@ export default function CreateGameScreen() {
             />
           </View>
 
-          {/* Sport Selection */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowSportModal(true)}
-          >
+          {/* Sport */}
+          <TouchableOpacity style={styles.input} onPress={() => setShowSportModal(true)}>
             <Text style={styles.inputLabel}>Sport</Text>
             <Text style={styles.inputValue}>{sport || 'Select Sport'}</Text>
           </TouchableOpacity>
 
-          {/* Date Selection */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowDatePicker(true)}
-          >
+          {/* Date */}
+          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.inputLabel}>Date</Text>
-            <Text style={styles.inputValue}>
-              {date.toLocaleDateString()}
-            </Text>
+            <Text style={styles.inputValue}>{date.toLocaleDateString()}</Text>
           </TouchableOpacity>
 
-          {/* Time Selection */}
+          {/* Start & End Time */}
           <View style={styles.timeContainer}>
-            <TouchableOpacity 
-              style={[styles.input, styles.timeInput]}
-              onPress={() => setShowStartTimePicker(true)}
-            >
+            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowStartTimePicker(true)}>
               <Text style={styles.inputLabel}>Start Time</Text>
               <Text style={styles.inputValue}>
                 {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.input, styles.timeInput]}
-              onPress={() => setShowEndTimePicker(true)}
-            >
+            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowEndTimePicker(true)}>
               <Text style={styles.inputLabel}>End Time</Text>
               <Text style={styles.inputValue}>
                 {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -166,17 +155,11 @@ export default function CreateGameScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Location */}
-          <View style={styles.input}>
+          {/* Location Dropdown */}
+          <TouchableOpacity style={styles.input} onPress={() => setShowLocationModal(true)}>
             <Text style={styles.inputLabel}>Location</Text>
-            <TextInput
-              style={styles.textInput}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Enter location"
-              placeholderTextColor={COLORS.gray}
-            />
-          </View>
+            <Text style={styles.inputValue}>{selectedLocation?.name || 'Select Location'}</Text>
+          </TouchableOpacity>
 
           {/* Description */}
           <View style={styles.input}>
@@ -193,19 +176,13 @@ export default function CreateGameScreen() {
           </View>
 
           {/* Skill Level */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowSkillLevelModal(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowSkillLevelModal(true)}>
             <Text style={styles.inputLabel}>Skill Level</Text>
             <Text style={styles.inputValue}>{skillLevel || 'Select Skill Level'}</Text>
           </TouchableOpacity>
 
           {/* Player Count */}
-          <TouchableOpacity 
-            style={styles.input}
-            onPress={() => setShowPlayerCountModal(true)}
-          >
+          <TouchableOpacity style={styles.input} onPress={() => setShowPlayerCountModal(true)}>
             <Text style={styles.inputLabel}>Player Count</Text>
             <Text style={styles.inputValue}>{playerCount || 'Select Player Count'}</Text>
           </TouchableOpacity>
@@ -213,16 +190,8 @@ export default function CreateGameScreen() {
       </ScrollView>
 
       {/* Post Button */}
-      <TouchableOpacity 
-        style={[styles.postButton, isLoading && styles.postButtonDisabled]}
-        onPress={handlePost}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <Text style={styles.postButtonText}>Post</Text>
-        )}
+      <TouchableOpacity style={[styles.postButton, isLoading && styles.postButtonDisabled]} onPress={handlePost} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.postButtonText}>Post</Text>}
       </TouchableOpacity>
 
       {/* Modals */}
@@ -231,14 +200,7 @@ export default function CreateGameScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Sport</Text>
             {SPORTS.map((s) => (
-              <TouchableOpacity
-                key={s}
-                style={styles.modalItem}
-                onPress={() => {
-                  setSport(s);
-                  setShowSportModal(false);
-                }}
-              >
+              <TouchableOpacity key={s} style={styles.modalItem} onPress={() => { setSport(s); setShowSportModal(false); }}>
                 <Text style={styles.modalItemText}>{s}</Text>
               </TouchableOpacity>
             ))}
@@ -246,81 +208,40 @@ export default function CreateGameScreen() {
         </View>
       )}
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) {
-              setDate(selectedDate);
-            }
-          }}
-        />
-      )}
-
-      {showStartTimePicker && (
-        <DateTimePicker
-          value={startTime}
-          mode="time"
-          display="default"
-          onChange={(event, selectedTime) => {
-            setShowStartTimePicker(false);
-            if (selectedTime) {
-              setStartTime(selectedTime);
-            }
-          }}
-        />
-      )}
-
-      {showEndTimePicker && (
-        <DateTimePicker
-          value={endTime}
-          mode="time"
-          display="default"
-          onChange={(event, selectedTime) => {
-            setShowEndTimePicker(false);
-            if (selectedTime) {
-              setEndTime(selectedTime);
-            }
-          }}
-        />
-      )}
-
-      {showSkillLevelModal && (
+      {showLocationModal && (
         <View style={styles.modal}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Skill Level</Text>
-            {SKILL_LEVELS.map((level) => (
-              <TouchableOpacity
-                key={level}
-                style={styles.modalItem}
-                onPress={() => {
-                  setSkillLevel(level);
-                  setShowSkillLevelModal(false);
-                }}
-              >
-                <Text style={styles.modalItemText}>{level}</Text>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            {LOCATIONS.map((loc) => (
+              <TouchableOpacity key={loc.name} style={styles.modalItem} onPress={() => { setSelectedLocation(loc); setShowLocationModal(false); }}>
+                <Text style={styles.modalItemText}>{loc.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       )}
 
+      {showDatePicker && <DateTimePicker value={date} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if (d) setDate(d); }} />}
+      {showStartTimePicker && <DateTimePicker value={startTime} mode="time" display="default" onChange={(e, t) => { setShowStartTimePicker(false); if (t) setStartTime(t); }} />}
+      {showEndTimePicker && <DateTimePicker value={endTime} mode="time" display="default" onChange={(e, t) => { setShowEndTimePicker(false); if (t) setEndTime(t); }} />}
+      {showSkillLevelModal && (
+        <View style={styles.modal}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Skill Level</Text>
+            {SKILL_LEVELS.map((level) => (
+              <TouchableOpacity key={level} style={styles.modalItem} onPress={() => { setSkillLevel(level); setShowSkillLevelModal(false); }}>
+                <Text style={styles.modalItemText}>{level}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
       {showPlayerCountModal && (
         <View style={styles.modal}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Player Count</Text>
             {PLAYER_COUNTS.map((count) => (
-              <TouchableOpacity
-                key={count}
-                style={styles.modalItem}
-                onPress={() => {
-                  setPlayerCount(count);
-                  setShowPlayerCountModal(false);
-                }}
-              >
+              <TouchableOpacity key={count} style={styles.modalItem} onPress={() => { setPlayerCount(count); setShowPlayerCountModal(false); }}>
                 <Text style={styles.modalItemText}>{count} players</Text>
               </TouchableOpacity>
             ))}
@@ -330,6 +251,7 @@ export default function CreateGameScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

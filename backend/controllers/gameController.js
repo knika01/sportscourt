@@ -1,6 +1,5 @@
 const pool = require('../db/pool');
 
-// Helper function for consistent error responses
 const handleError = (res, error, status = 500) => {
   console.error('Error:', error);
   res.status(status).json({
@@ -9,7 +8,6 @@ const handleError = (res, error, status = 500) => {
   });
 };
 
-// Helper function for successful responses
 const handleSuccess = (res, data, status = 200) => {
   res.status(status).json({
     status: 'success',
@@ -17,73 +15,50 @@ const handleSuccess = (res, data, status = 200) => {
   });
 };
 
-// Fetch all games with optional filters
+// Fetch all games
 const fetchAllGames = async (req, res) => {
   try {
-    console.log('Fetching all games...');
-    const { location, skill_level, date } = req.query;
-    let query = 'SELECT * FROM games';
-    const params = [];
-    let paramCount = 1;
-
-    if (location || skill_level || date) {
-      query += ' WHERE';
-      if (location) {
-        query += ` location ILIKE $${paramCount}`;
-        params.push(`%${location}%`);
-        paramCount++;
-      }
-      if (skill_level) {
-        query += location ? ' AND' : '';
-        query += ` skill_level = $${paramCount}`;
-        params.push(skill_level);
-        paramCount++;
-      }
-      if (date) {
-        query += (location || skill_level) ? ' AND' : '';
-        query += ` DATE(date_time) = $${paramCount}`;
-        params.push(date);
-      }
-    }
-
-    query += ' ORDER BY date_time ASC';
-    console.log('Executing query:', query);
-    console.log('With params:', params);
-    const result = await pool.query(query, params);
-    console.log('Query result:', result.rows);
+    const result = await pool.query('SELECT * FROM games ORDER BY date_time ASC');
     handleSuccess(res, result.rows);
   } catch (err) {
-    console.error('Error in fetchAllGames:', err);
     handleError(res, err);
   }
 };
 
 // Create a new game
 const createGame = async (req, res) => {
-  const { title, sport, location, date_time, skill_level, max_players, created_by, description } = req.body;
+  const {
+    title,
+    sport,
+    location,
+    latitude,
+    longitude,
+    date_time,
+    skill_level,
+    max_players,
+    created_by,
+    description
+  } = req.body;
 
-  // Input validation
-  if (!title || !sport || !location || !date_time || !skill_level || !max_players || !created_by) {
+  if (!title || !sport || !location || latitude == null || longitude == null || !date_time || !skill_level || !max_players || !created_by) {
     return handleError(res, new Error('Missing required fields'), 400);
   }
 
-  // Validate date format
   const gameDate = new Date(date_time);
   if (isNaN(gameDate.getTime())) {
     return handleError(res, new Error('Invalid date format'), 400);
   }
 
-  // Validate max_players
   if (max_players < 2) {
     return handleError(res, new Error('Maximum players must be at least 2'), 400);
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO games (title, sport, location, date_time, skill_level, max_players, created_by, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO games (title, sport, location, latitude, longitude, date_time, skill_level, max_players, created_by, description)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [title, sport, location, gameDate, skill_level, max_players, created_by, description]
+      [title, sport, location, latitude, longitude, gameDate, skill_level, max_players, created_by, description]
     );
     handleSuccess(res, result.rows[0], 201);
   } catch (err) {
@@ -108,10 +83,19 @@ const getGameById = async (req, res) => {
 // Update a game
 const updateGame = async (req, res) => {
   const { id } = req.params;
-  const { title, sport, location, date_time, skill_level, max_players, description } = req.body;
+  const {
+    title,
+    sport,
+    location,
+    latitude,
+    longitude,
+    date_time,
+    skill_level,
+    max_players,
+    description
+  } = req.body;
 
   try {
-    // Check if game exists
     const gameExists = await pool.query('SELECT * FROM games WHERE id = $1', [id]);
     if (gameExists.rows.length === 0) {
       return handleError(res, new Error('Game not found'), 404);
@@ -122,13 +106,15 @@ const updateGame = async (req, res) => {
        SET title = COALESCE($1, title),
            sport = COALESCE($2, sport),
            location = COALESCE($3, location),
-           date_time = COALESCE($4, date_time),
-           skill_level = COALESCE($5, skill_level),
-           max_players = COALESCE($6, max_players),
-           description = COALESCE($7, description)
-       WHERE id = $8
+           latitude = COALESCE($4, latitude),
+           longitude = COALESCE($5, longitude),
+           date_time = COALESCE($6, date_time),
+           skill_level = COALESCE($7, skill_level),
+           max_players = COALESCE($8, max_players),
+           description = COALESCE($9, description)
+       WHERE id = $10
        RETURNING *`,
-      [title, sport, location, date_time, skill_level, max_players, description, id]
+      [title, sport, location, latitude, longitude, date_time, skill_level, max_players, description, id]
     );
     handleSuccess(res, result.rows[0]);
   } catch (err) {
@@ -150,53 +136,17 @@ const deleteGame = async (req, res) => {
   }
 };
 
-// Get games for a specific user
-const getUserGames = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const query = `
-      SELECT g.* 
-      FROM games g
-      JOIN game_participants gp ON g.id = gp.game_id
-      WHERE gp.user_id = $1
-      ORDER BY g.date_time DESC
-    `;
-    const result = await pool.query(query, [userId]);
-    
-    res.json({
-      status: 'success',
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching user games:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch user games'
-    });
-  }
-};
-
 // Get games where user is the host
 const getUserHostedGames = async (req, res) => {
   try {
     const { userId } = req.params;
-    const query = `
-      SELECT * FROM games
-      WHERE created_by = $1
-      ORDER BY date_time DESC
-    `;
-    const result = await pool.query(query, [userId]);
-    
-    res.json({
-      status: 'success',
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching user hosted games:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch user hosted games'
-    });
+    const result = await pool.query(
+      `SELECT * FROM games WHERE created_by = $1 ORDER BY date_time DESC`,
+      [userId]
+    );
+    handleSuccess(res, result.rows);
+  } catch (err) {
+    handleError(res, err);
   }
 };
 
@@ -204,25 +154,16 @@ const getUserHostedGames = async (req, res) => {
 const getUserJoinedGames = async (req, res) => {
   try {
     const { userId } = req.params;
-    const query = `
-      SELECT g.* 
-      FROM games g
-      JOIN game_participants gp ON g.id = gp.game_id
-      WHERE gp.user_id = $1
-      ORDER BY g.date_time DESC
-    `;
-    const result = await pool.query(query, [userId]);
-    
-    res.json({
-      status: 'success',
-      data: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching user joined games:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to fetch user joined games'
-    });
+    const result = await pool.query(
+      `SELECT g.* FROM games g
+       JOIN game_participants gp ON g.id = gp.game_id
+       WHERE gp.user_id = $1
+       ORDER BY g.date_time DESC`,
+      [userId]
+    );
+    handleSuccess(res, result.rows);
+  } catch (err) {
+    handleError(res, err);
   }
 };
 
@@ -232,7 +173,6 @@ module.exports = {
   getGameById,
   updateGame,
   deleteGame,
-  getUserGames,
   getUserHostedGames,
   getUserJoinedGames
 };
