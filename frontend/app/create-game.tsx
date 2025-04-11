@@ -88,6 +88,8 @@ export default function CreateGameScreen() {
         created_by: user.id,
       };
 
+      console.log('Creating game with data:', gameData);
+
       await gameService.createGame(gameData);
 
       Alert.alert('Success', 'Game created successfully!', [

@@ -40,7 +40,7 @@ const createGame = async (req, res) => {
     description
   } = req.body;
 
-  if (!title || !sport || !location || latitude == null || longitude == null || !date_time || !skill_level || !max_players || !created_by) {
+  if (!title || !sport || !location || !date_time || !skill_level || !max_players || !created_by) {
     return handleError(res, new Error('Missing required fields'), 400);
   }
 
@@ -58,7 +58,7 @@ const createGame = async (req, res) => {
       `INSERT INTO games (title, sport, location, latitude, longitude, date_time, skill_level, max_players, created_by, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [title, sport, location, latitude, longitude, gameDate, skill_level, max_players, created_by, description]
+      [title, sport, location, latitude || null, longitude || null, gameDate, skill_level, max_players, created_by, description]
     );
     handleSuccess(res, result.rows[0], 201);
   } catch (err) {
