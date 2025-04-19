@@ -23,10 +23,15 @@ const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const PLAYER_COUNTS = Array.from({ length: 9 }, (_, i) => (i + 2).toString());
 
 const LOCATIONS = [
-  { name: 'Palmer Field', latitude: 42.2808, longitude: -83.7382 },
-  { name: 'Mitchell Field', latitude: 42.2767, longitude: -83.7265 },
-  { name: 'Burns Park', latitude: 42.2645, longitude: -83.7306 },
-  { name: 'Fuller Park', latitude: 42.2812, longitude: -83.7115 },
+  { name: 'Palmer Field', latitude: 42.2808, longitude: -83.7323},
+  { name: 'Mitchell Field', latitude: 42.2859, longitude: -83.7225},
+  { name: 'Fuller Park', latitude: 42.2881, longitude: -83.7289},
+  { name: 'North Campus Recreation Building', latitude: 42.2961, longitude: -83.7189},
+  { name: 'Intramural Sports Building', latitude: 42.2961, longitude: -83.7418},
+  { name: 'Hadley Center', latitude: 42.2782, longitude: -83.7327},
+  { name: 'Sports Coliseum', latitude: 42.27228, longitude: -83.74596},
+  { name: 'Hubbard Road Rec Fields', latitude: 42.2946, longitude: -83.7227},
+  { name: 'Baits Tennis Courts', latitude: 42.2931, longitude: -83.72409},
 ];
 
 export default function CreateGameScreen() {
