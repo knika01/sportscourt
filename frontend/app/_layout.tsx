@@ -7,40 +7,16 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { useSegments, useRouter } from 'expo-router';
-
+import { View, ActivityIndicator } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Protect routes that require authentication
-function useProtectedRoute() {
+function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-
-  useEffect(() => {
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'signup';
-
-    if (!isLoading) {
-      if (!user && !inAuthGroup) {
-        // Redirect to login if not authenticated
-        setTimeout(() => {
-          router.replace('/login');
-        }, 0);
-      } else if (user && inAuthGroup) {
-        // Redirect to home if already authenticated
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 0);
-      }
-    }
-  }, [user, segments, isLoading]);
-}
-
-function RootLayoutNav() {
-  useProtectedRoute();
-
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -52,8 +28,24 @@ function RootLayoutNav() {
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
+  useEffect(() => {
+    if (!isLoading && loaded) {
+      const inAuthGroup = segments[0] === 'login' || segments[0] === 'signup';
+
+      if (!user && !inAuthGroup) {
+        router.replace('/login');
+      } else if (user && inAuthGroup) {
+        router.replace('/(tabs)');
+      }
+    }
+  }, [user, segments, isLoading, loaded]);
+
+  if (!loaded || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
