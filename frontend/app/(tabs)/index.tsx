@@ -30,12 +30,20 @@ export default function HomeScreen() {
   const fetchUserData = async () => {
     if (!user?.id) return;
     try {
+      console.log('Fetching user data for ID:', user.id);
       const response = await userService.getUserById(user.id);
+      console.log('User data response:', response);
+      
       if (response.status === 'success' && response.data) {
+        console.log('Setting user name to:', response.data.first_name);
         setUserName(response.data.first_name);
+      } else {
+        console.error('Failed to fetch user data:', response.message);
+        setUserName('User');
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
+      setUserName('User');
     }
   };
 

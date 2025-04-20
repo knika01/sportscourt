@@ -18,12 +18,23 @@ const COLORS = {
 
 const SPORTS = ['Basketball', 'Tennis', 'Soccer', 'Volleyball', 'Badminton', 'Pickleball', 'Football'];
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
+const LOCATIONS = [
+  { name: 'Palmer Field', latitude: 42.2808, longitude: -83.7430 },
+  { name: 'Mitchell Field', latitude: 42.2800, longitude: -83.7400 },
+  { name: 'Fuller Park', latitude: 42.2790, longitude: -83.7420 },
+  { name: 'North Campus Recreation Building', latitude: 42.2810, longitude: -83.7410 },
+  { name: 'Intramural Sports Building', latitude: 42.2820, longitude: -83.7400 },
+  { name: 'Hadley Center', latitude: 42.2830, longitude: -83.7390 },
+  { name: 'Sports Coliseum', latitude: 42.2840, longitude: -83.7380 },
+  { name: 'Hubbard Road Rec Fields', latitude: 42.2850, longitude: -83.7370 },
+  { name: 'Baits Tennis Courts', latitude: 42.2860, longitude: -83.7360 }
+];
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [selectedSkillLevel, setSelectedSkillLevel] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +53,10 @@ export default function SearchScreen() {
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     fetchGames();
   }, []);
 
-  // Refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchGames();
@@ -57,19 +66,18 @@ export default function SearchScreen() {
   const clearFilters = () => {
     setSelectedSport(null);
     setSelectedSkillLevel(null);
-    setSelectedDate(null);
+    setSelectedLocation(null);
     setSearchQuery('');
   };
 
-  // Filter games based on selected filters and search query
   const filteredGames = games.filter(game => {
     const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       game.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSport = !selectedSport || game.sport === selectedSport;
     const matchesSkillLevel = !selectedSkillLevel || game.skill_level === selectedSkillLevel;
-    const matchesDate = !selectedDate || new Date(game.date_time).toDateString() === new Date(selectedDate).toDateString();
+    const matchesLocation = !selectedLocation || game.location === selectedLocation;
     
-    return matchesSearch && matchesSport && matchesSkillLevel && matchesDate;
+    return matchesSearch && matchesSport && matchesSkillLevel && matchesLocation;
   });
 
   const formatDateTime = (dateTime: string) => {
@@ -88,7 +96,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color={COLORS.gray} style={styles.searchIcon} />
@@ -166,11 +174,39 @@ export default function SearchScreen() {
             </ScrollView>
           </View>
 
-          {/* Date Filter */}
+          {/* Location Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>Date</Text>
+            <Text style={styles.filterLabel}>Location</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {/* Implementation of date filtering would go here */}
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  !selectedLocation && styles.filterChipSelected
+                ]}
+                onPress={() => setSelectedLocation(null)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  !selectedLocation && styles.filterChipTextSelected
+                ]}>All</Text>
+              </TouchableOpacity>
+              {LOCATIONS.map((location) => (
+                <TouchableOpacity
+                  key={location.name}
+                  style={[
+                    styles.filterChip,
+                    selectedLocation === location.name && styles.filterChipSelected
+                  ]}
+                  onPress={() => setSelectedLocation(location.name)}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    selectedLocation === location.name && styles.filterChipTextSelected
+                  ]}>
+                    {location.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </ScrollView>
           </View>
 

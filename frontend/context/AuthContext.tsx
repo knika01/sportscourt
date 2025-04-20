@@ -26,10 +26,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userJson = await AsyncStorage.getItem('user');
       if (userJson) {
         const userData = JSON.parse(userJson);
-        setUser(userData);
+        if (userData && userData.id && userData.token) {
+          setUser(userData);
+        } else {
+          await AsyncStorage.removeItem('user');
+          setUser(null);
+          router.replace('/login');
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      await AsyncStorage.removeItem('user');
+      setUser(null);
+      router.replace('/login');
     } finally {
       setIsLoading(false);
     }
@@ -39,6 +48,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await userService.login({ email, password });
       if (response.status === 'success' && response.data) {
+        if (!response.data.token || !response.data.id) {
+          throw new Error('Invalid response from server');
+        }
         await AsyncStorage.setItem('user', JSON.stringify(response.data));
         setUser(response.data);
         router.replace('/(tabs)');

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 
 const COLORS = {
   primary: '#4CA354',
@@ -37,74 +37,83 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* Skill Level Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Skill Level</Text>
+    <>
+      <Stack.Screen 
+        options={{ 
+          headerShown: false,
+          title: "Settings"
+        }} 
+      />
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity 
-            style={styles.dropdown}
-            onPress={() => setShowSkillLevelModal(true)}
+            style={styles.backButton}
+            onPress={() => router.back()}
           >
-            <Text style={styles.dropdownText}>
-              {selectedSkillLevel || 'Select Skill Level'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={COLORS.black} />
+            <Ionicons name="arrow-back" size={24} color={COLORS.white} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <View style={styles.backButton} />
         </View>
 
-        {/* Notification Preferences Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification Preferences</Text>
-          {NOTIFICATION_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.id}
-              style={styles.checkboxContainer}
-              onPress={() => toggleNotification(option.id)}
+        <ScrollView style={styles.content}>
+          {/* Skill Level Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Skill Level</Text>
+            <TouchableOpacity 
+              style={styles.dropdown}
+              onPress={() => setShowSkillLevelModal(true)}
             >
-              <View style={styles.checkbox}>
-                {selectedNotifications.includes(option.id) && (
-                  <Ionicons name="checkmark" size={16} color={COLORS.white} />
-                )}
-              </View>
-              <Text style={styles.checkboxLabel}>{option.label}</Text>
+              <Text style={styles.dropdownText}>
+                {selectedSkillLevel || 'Select Skill Level'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.black} />
             </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+          </View>
 
-      {/* Skill Level Modal */}
-      {showSkillLevelModal && (
-        <View style={styles.modal}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Skill Level</Text>
-            {SKILL_LEVELS.map((level) => (
+          {/* Notification Preferences Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notification Preferences</Text>
+            {NOTIFICATION_OPTIONS.map((option) => (
               <TouchableOpacity
-                key={level}
-                style={styles.modalItem}
-                onPress={() => {
-                  setSelectedSkillLevel(level);
-                  setShowSkillLevelModal(false);
-                }}
+                key={option.id}
+                style={styles.checkboxContainer}
+                onPress={() => toggleNotification(option.id)}
               >
-                <Text style={styles.modalItemText}>{level}</Text>
+                <View style={[styles.checkbox, selectedNotifications.includes(option.id) && styles.checkboxSelected]}>
+                  {selectedNotifications.includes(option.id) && (
+                    <Ionicons name="checkmark" size={16} color={COLORS.white} />
+                  )}
+                </View>
+                <Text style={styles.checkboxLabel}>{option.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-      )}
-    </SafeAreaView>
+        </ScrollView>
+
+        {/* Skill Level Modal */}
+        {showSkillLevelModal && (
+          <View style={styles.modal}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Select Skill Level</Text>
+              {SKILL_LEVELS.map((level) => (
+                <TouchableOpacity
+                  key={level}
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setSelectedSkillLevel(level);
+                    setShowSkillLevelModal(false);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>{level}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+    </>
   );
 }
 
@@ -116,16 +125,22 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'space-between',
     backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
   },
   backButton: {
-    marginRight: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.white,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -170,6 +185,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  checkboxSelected: {
     backgroundColor: COLORS.primary,
   },
   checkboxLabel: {
