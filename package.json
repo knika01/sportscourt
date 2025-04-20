@@ -9,13 +9,5 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  },
-  "dependencies": {
-    "@expo/webpack-config": "^0.12.52",
-    "@react-native-community/datetimepicker": "^8.3.0",
-    "date-fns": "^4.1.0",
-    "helmet": "^8.1.0",
-    "react-dom": "^18.2.0",
-    "react-native-web": "^0.19.13"
   }
 }

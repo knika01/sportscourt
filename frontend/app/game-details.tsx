@@ -158,9 +158,16 @@ export default function GameDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Time</Text>
           <View style={styles.timeContainer}>
-            <View style={styles.timeInput}>
+            <View style={[styles.timeInput, { flex: 1 }]}>
+              <Text style={styles.timeLabel}>Start Time</Text>
               <Text style={styles.timeText}>
-                {new Date(game.date_time).toLocaleString()}
+                {new Date(game.date_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+            <View style={[styles.timeInput, { flex: 1 }]}>
+              <Text style={styles.timeLabel}>End Time</Text>
+              <Text style={styles.timeText}>
+                {new Date(new Date(game.date_time).getTime() + 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
             </View>
           </View>
@@ -342,16 +349,20 @@ const styles = StyleSheet.create({
   },
   timeContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
   timeInput: {
-    flex: 1,
     backgroundColor: COLORS.lightGray,
     padding: 12,
     borderRadius: 7,
     borderWidth: 1,
     borderColor: COLORS.black,
+  },
+  timeLabel: {
+    fontSize: 14,
+    color: COLORS.gray,
+    marginBottom: 4,
   },
   timeText: {
     fontSize: 16,
