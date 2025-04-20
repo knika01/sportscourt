@@ -14,7 +14,7 @@ TO RUN:
 OR QR CODE VIA Expo Go
 
 Technologies: 
-- React Native (Frontend)
+- React Native w/ TypeScript (Frontend)
 - Node.js (Backend)
 - Express.js (Backend)
 - PostgreSQL (NeonDB)
