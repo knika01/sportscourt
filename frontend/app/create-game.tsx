@@ -140,26 +140,98 @@ export default function CreateGameScreen() {
           </TouchableOpacity>
 
           {/* Date */}
-          <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+          <View style={styles.input}>
             <Text style={styles.inputLabel}>Date</Text>
-            <Text style={styles.inputValue}>{date.toLocaleDateString()}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+              <Text style={styles.inputValue}>{date.toLocaleDateString()}</Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="inline"
+                  onChange={(e, d) => {
+                    if (d) setDate(d);
+                  }}
+                  style={styles.datePicker}
+                />
+                <TouchableOpacity 
+                  style={styles.calendarDoneButton} 
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.calendarDoneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
 
           {/* Start & End Time */}
-          <View style={styles.timeContainer}>
-            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowStartTimePicker(true)}>
-              <Text style={styles.inputLabel}>Start Time</Text>
-              <Text style={styles.inputValue}>
-                {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </TouchableOpacity>
+          <View>
+            <View style={styles.timeContainer}>
+              <View style={[styles.input, styles.timeInput]}>
+                <Text style={styles.inputLabel}>Start Time</Text>
+                <TouchableOpacity onPress={() => setShowStartTimePicker(true)}>
+                  <Text style={styles.inputValue}>
+                    {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            <TouchableOpacity style={[styles.input, styles.timeInput]} onPress={() => setShowEndTimePicker(true)}>
-              <Text style={styles.inputLabel}>End Time</Text>
-              <Text style={styles.inputValue}>
-                {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </TouchableOpacity>
+              <View style={[styles.input, styles.timeInput]}>
+                <Text style={styles.inputLabel}>End Time</Text>
+                <TouchableOpacity onPress={() => setShowEndTimePicker(true)}>
+                  <Text style={styles.inputValue}>
+                    {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {(showStartTimePicker || showEndTimePicker) && (
+              <View style={styles.timePickerContainer}>
+                <DateTimePicker
+                  value={showStartTimePicker ? startTime : endTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={(e, t) => {
+                    if (t) {
+                      if (showStartTimePicker) {
+                        setStartTime(t);
+                      } else {
+                        setEndTime(t);
+                      }
+                    }
+                  }}
+                />
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.cancelButton]} 
+                    onPress={() => {
+                      if (showStartTimePicker) {
+                        setShowStartTimePicker(false);
+                      } else {
+                        setShowEndTimePicker(false);
+                      }
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.doneButton]} 
+                    onPress={() => {
+                      if (showStartTimePicker) {
+                        setShowStartTimePicker(false);
+                      } else {
+                        setShowEndTimePicker(false);
+                      }
+                    }}
+                  >
+                    <Text style={styles.doneButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Location Dropdown */}
@@ -228,9 +300,6 @@ export default function CreateGameScreen() {
         </View>
       )}
 
-      {showDatePicker && <DateTimePicker value={date} mode="date" display="default" onChange={(e, d) => { setShowDatePicker(false); if (d) setDate(d); }} />}
-      {showStartTimePicker && <DateTimePicker value={startTime} mode="time" display="default" onChange={(e, t) => { setShowStartTimePicker(false); if (t) setStartTime(t); }} />}
-      {showEndTimePicker && <DateTimePicker value={endTime} mode="time" display="default" onChange={(e, t) => { setShowEndTimePicker(false); if (t) setEndTime(t); }} />}
       {showSkillLevelModal && (
         <View style={styles.modal}>
           <View style={styles.modalContent}>
@@ -375,5 +444,63 @@ const styles = StyleSheet.create({
   },
   postButtonDisabled: {
     opacity: 0.7,
+  },
+  datePickerContainer: {
+    marginTop: 10,
+    marginHorizontal: -8,  // Compensate for the padding to align with container edges
+  },
+  datePicker: {
+    width: '100%',
+    height: 300,
+  },
+  timePickerContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    marginTop: -8,  // Reduce gap between inputs and picker
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+  },
+  button: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  doneButton: {
+    backgroundColor: COLORS.primary,
+  },
+  doneButtonText: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  cancelButton: {
+    backgroundColor: COLORS.lightGray,
+  },
+  cancelButtonText: {
+    color: COLORS.black,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  calendarDoneButton: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+    marginHorizontal: 16,
+  },
+  calendarDoneButtonText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: '600',
   },
 }); 
